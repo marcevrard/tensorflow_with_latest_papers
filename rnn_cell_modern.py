@@ -113,6 +113,7 @@ class LSTMCell_MemoryArray(RNNCell):
       # i = input_gate, j = new_input, f = forget_gate, o = output_gate -- comes in sets of fours
       all_vars_list = tf.split(1, 4 * self.num_memory_arrays, concat)
 
+      '''memory array loop'''
       new_c_list, new_h_list = [], []
       for array_counter in xrange(self.num_memory_arrays):
 
@@ -135,7 +136,7 @@ class LSTMCell_MemoryArray(RNNCell):
           
         new_h_list.append(tf.tanh(new_c) * tf.sigmoid(o))
 
-      '''sum all new_h components -- I'm surprised that there is no division by num_memory_arrays'''
+      '''sum all new_h components -- could instead do a mean -- but investigate that later'''
       new_h = tf.add_n(new_h_list)
   
     return new_h, tf.concat(1, [new_h] + new_c_list) #purposely reversed

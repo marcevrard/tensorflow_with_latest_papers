@@ -141,7 +141,7 @@ rnn_cell = rnn_cell_mulint_layernorm_modern.HighwayRNNCell_MulInt_LayerNorm(size
 
 ### LSTM With Multiple Memory Arrays
 
-Implementation of Recurrent Memory Array Structures Kamil Rocki
+Implementation of Recurrent Memory Array Structures by Kamil Rocki
 https://arxiv.org/abs/1607.03085
 
 Idea is to build more complex memory structures within one single layer rather than stacking multiple layers of RNNs.
