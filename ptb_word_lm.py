@@ -101,7 +101,8 @@ class PTBModel(object):
     # rnn_cell = rnn_cell_layernorm_modern.BasicLSTMCell_LayerNorm(size)
     # rnn_cell = rnn_cell_layernorm_modern.GRUCell_LayerNorm(size)
     # rnn_cell = rnn_cell_layernorm_modern.HighwayRNNCell_LayerNorm(size)
-    rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(size, num_memory_arrays = 2, use_multiplicative_integration = True, use_recurrent_dropout = False)
+    # rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(size, num_memory_arrays = 2, use_multiplicative_integration = True, use_recurrent_dropout = False)
+    rnn_cell = rnn_cell_modern.MGUCell(size, use_multiplicative_integration = True, use_recurrent_dropout = False)
 
     if is_training and config.keep_prob < 1:
       rnn_cell = tf.nn.rnn_cell.DropoutWrapper(

@@ -11,6 +11,7 @@ Currently Implemented Papers:
 * Layer Normalization
 * Layer Normalization & Multiplicative Integration
 * LSTM With Multiple Memory Arrays
+* Minimal Gated Unit
 * GRU Mutants
 
 
@@ -113,7 +114,7 @@ Layer normalization promises faster convergence and lower perplexities. With lay
 Note: It seems that the GRU implementation does not converge currently. I've found that it does converge if you only apply LN terms to the first two r and u matrices. 
 
 ```python
-import rnn_cell_mulint_layernorm_modern
+import rnn_cell_layernorm_modern
 
 rnn_cell = rnn_cell_layernorm_modern.BasicLSTMCell_LayerNorm(size)
 #OR
@@ -162,6 +163,21 @@ rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(size, num_memory_arrays = 2,
 	use_multiplicative_integration = True, use_recurrent_dropout = False, use_layer_normalization = False)
 ```
 
+### Minimal Gated Unit
+
+Implementation of Minimal Gated Unit by Zhou
+
+This minimal RNN can match the performance of GRU and has 33% less parameters. As a result, it computes about 20% faster on a Titan X compared to a same sized GRU. This implementation also has options for:
+
+- Multiplicative Integration
+- Recurrent Dropout
+
+```python
+import rnn_cell_modern
+
+cell = rnn_cell_modern.MGUCell(num_units, use_multiplicative_integration = True, use_recurrent_dropout = False)
+
+```
 
 ### GRU Mutants
 
