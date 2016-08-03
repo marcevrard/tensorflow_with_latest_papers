@@ -11,7 +11,7 @@ Currently Implemented Papers:
 * Layer Normalization
 * Layer Normalization & Multiplicative Integration
 * LSTM With Multiple Memory Arrays
-* Minimal Gated Unit
+* Minimal Gated Unit RNN
 * GRU Mutants
 
 
@@ -163,11 +163,11 @@ rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(size, num_memory_arrays = 2,
 	use_multiplicative_integration = True, use_recurrent_dropout = False, use_layer_normalization = False)
 ```
 
-### Minimal Gated Unit
+### Minimal Gated Unit Recurrent Neural Network
 
 Implementation of Minimal Gated Unit by Zhou
 
-This minimal RNN can match the performance of GRU and has 33% less parameters. As a result, it computes about 20% faster on a Titan X compared to a same sized GRU. This implementation also has options for:
+This minimal RNN can match the performance of GRU and has 33% less parameters. As a result, it computes about 20% faster on a Titan X compared to a same sized GRU. Very optimal RNN for a quick test of dataset. This implementation also has options for:
 
 - Multiplicative Integration
 - Recurrent Dropout
