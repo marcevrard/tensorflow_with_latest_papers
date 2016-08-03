@@ -172,11 +172,14 @@ This minimal RNN can match the performance of GRU and has 33% less parameters. A
 
 - Multiplicative Integration
 - Recurrent Dropout
+- Forget Bias Initialization
+
+The forget_bias_initialization can be experimented around with. The authors do not specify what value works best.
 
 ```python
 import rnn_cell_modern
 
-cell = rnn_cell_modern.MGUCell(num_units, use_multiplicative_integration = True, use_recurrent_dropout = False)
+cell = rnn_cell_modern.MGUCell(num_units, use_multiplicative_integration = True, use_recurrent_dropout = False, forget_bias_initialization = 1.0)
 
 ```
 

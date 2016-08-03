@@ -63,12 +63,14 @@ class MGUCell(RNNCell):
   """Minimal Gated Unit from  http://arxiv.org/pdf/1603.09420v1.pdf."""
 
   def __init__(self, num_units, use_multiplicative_integration = True,
-    use_recurrent_dropout = False, recurrent_dropout_factor = 0.90, is_training = True):
+    use_recurrent_dropout = False, recurrent_dropout_factor = 0.90, is_training = True,
+    forget_bias_initialization = 1.0):
     self._num_units = num_units
     self.use_multiplicative_integration = use_multiplicative_integration
     self.use_recurrent_dropout = use_recurrent_dropout
     self.recurrent_dropout_factor = recurrent_dropout_factor
     self.is_training = is_training
+    self.forget_bias_initialization = forget_bias_initialization
 
   @property
   def input_size(self):
@@ -86,9 +88,9 @@ class MGUCell(RNNCell):
     with tf.variable_scope(scope or type(self).__name__):       
       with tf.variable_scope("Gates"):  # Forget Gate bias starts as 1.0 -- TODO: double check if this is correct
         if self.use_multiplicative_integration:
-          gated_factor = multiplicative_integration([inputs, state], self._num_units, 1.0)
+          gated_factor = multiplicative_integration([inputs, state], self._num_units, self.forget_bias_initialization)
         else:
-          gated_factor = linear([inputs, state], self._num_units, True, 1.0)
+          gated_factor = linear([inputs, state], self._num_units, True, self.forget_bias_initialization)
 
         gated_factor = tf.sigmoid(gated_factor)  
 
