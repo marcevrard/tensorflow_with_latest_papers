@@ -1,4 +1,8 @@
 '''
+code originally from khaotik at https://github.com/khaotik/char-rnn-tensorflow
+
+modified by leavesbreathe
+
 Unitary RNN
 Reference http://arxiv.org/abs/1511.06464
 '''

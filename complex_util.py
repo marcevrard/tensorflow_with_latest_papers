@@ -1,3 +1,6 @@
+'''code originally from khaotik at https://github.com/khaotik/char-rnn-tensorflow
+
+to be modified by leavesbreathe'''
 import tensorflow as tf
 from math import pi
 
