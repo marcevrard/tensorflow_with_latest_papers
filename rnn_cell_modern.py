@@ -59,6 +59,54 @@ class HighwayRNNCell(RNNCell):
 
     return current_state, current_state
 
+class BasicGatedCell(RNNCell):
+  """Basic Gated Cell from NasenSpray on reddit: https://www.reddit.com/r/MachineLearning/comments/4vyv89/minimal_gate_unit_for_recurrent_neural_networks/"""
+
+  def __init__(self, num_units, use_multiplicative_integration = True,
+    use_recurrent_dropout = False, recurrent_dropout_factor = 0.90, is_training = True,
+    forget_bias_initialization = 1.0):
+    self._num_units = num_units
+    self.use_multiplicative_integration = use_multiplicative_integration
+    self.use_recurrent_dropout = use_recurrent_dropout
+    self.recurrent_dropout_factor = recurrent_dropout_factor
+    self.is_training = is_training
+    self.forget_bias_initialization = forget_bias_initialization
+
+  @property
+  def input_size(self):
+    return self._num_units
+
+  @property
+  def output_size(self):
+    return self._num_units
+
+  @property
+  def state_size(self):
+    return self._num_units
+
+  def __call__(self, inputs, state, timestep = 0,scope=None):
+    with tf.variable_scope(scope or type(self).__name__):       
+      with tf.variable_scope("Gates"):  # Forget Gate bias starts as 1.0 -- TODO: double check if this is correct
+        if self.use_multiplicative_integration:
+          gated_factor = multiplicative_integration([inputs, state], self._num_units, self.forget_bias_initialization)
+        else:
+          gated_factor = linear([inputs, state], self._num_units, True, self.forget_bias_initialization)
+
+        gated_factor = tf.sigmoid(gated_factor)  
+
+      with tf.variable_scope("Candidate"): 
+          c = tf.tanh(linear([inputs], self._num_units, True, 0.0))
+
+        if self.use_recurrent_dropout and self.is_training:
+          input_contribution = tf.nn.dropout(c, self.recurrent_dropout_factor)
+        else:
+          input_contribution = c
+
+      new_h = (1 - gated_factor)*state + gated_factor * input_contribution
+
+    return new_h, new_h
+
+
 class MGUCell(RNNCell):
   """Minimal Gated Unit from  http://arxiv.org/pdf/1603.09420v1.pdf."""
 
