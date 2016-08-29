@@ -57,7 +57,7 @@ def layer_norm(input_tensor, num_variables_in_tensor = 1, initial_bias_value = 0
       return tf.concat(1, list_of_layer_normed_results)
 
 
-def moments_for_layer_norm(x, axes = 1, name = None):
+def moments_for_layer_norm(x, axes = 1, name = None, epsilon = 0.001):
   '''output for mean and variance should be [batch_size]'''
 
   if not isinstance(axes, list): axes = list(axes)
@@ -65,7 +65,7 @@ def moments_for_layer_norm(x, axes = 1, name = None):
   with tf.op_scope([x, axes], name, "moments"):
     mean = tf.reduce_mean(x, axes, keep_dims = True)
 
-    variance = tf.sqrt(tf.reduce_mean(tf.square(x - mean), axes, keep_dims = True))
+    variance = tf.sqrt(tf.reduce_mean(tf.square(x - mean), axes, keep_dims = True) + epsilon)
 
     return mean, variance 
 
