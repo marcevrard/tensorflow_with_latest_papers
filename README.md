@@ -198,3 +198,12 @@ cell = rnn_cell_modern.JZS2Cell(num_units)
 #Or
 cell = rnn_cell_modern.JZS3Cell(num_units)
 ```
+
+### Weight Tying
+
+https://arxiv.org/abs/1608.05859
+
+Tying the input word embeding to the softmax matrix. 
+```python
+softmax_w = tf.transpose(embedding)
+```
