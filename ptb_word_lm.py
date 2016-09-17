@@ -137,7 +137,7 @@ class PTBModel(object):
         outputs.append(cell_output)
 
     output = tf.reshape(tf.concat(1, outputs), [-1, size])
-    softmax_w = tf.get_variable("softmax_w", [size, vocab_size])
+    softmax_w = tf.transpose(embedding) # weight tying
     softmax_b = tf.get_variable("softmax_b", [vocab_size])
     logits = tf.matmul(output, softmax_w) + softmax_b
     loss = tf.nn.seq2seq.sequence_loss_by_example(
