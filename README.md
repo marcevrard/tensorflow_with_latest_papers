@@ -203,7 +203,7 @@ cell = rnn_cell_modern.JZS3Cell(num_units)
 
 https://arxiv.org/abs/1608.05859
 
-Tying the input word embeding to the softmax matrix. 
+Tying the input word embeding to the softmax matrix. Because of the similarities between the input embedding and the softmax matrix (AKA the output embedding), setting them to be equal improves preplexity while reducing the number of parameters in the model. 
 ```python
 softmax_w = tf.transpose(embedding)
 ```
