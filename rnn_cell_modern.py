@@ -95,7 +95,7 @@ class BasicGatedCell(RNNCell):
         gated_factor = tf.sigmoid(gated_factor)  
 
       with tf.variable_scope("Candidate"): 
-          c = tf.tanh(linear([inputs], self._num_units, True, 0.0))
+        c = tf.tanh(linear([inputs], self._num_units, True, 0.0))
 
         if self.use_recurrent_dropout and self.is_training:
           input_contribution = tf.nn.dropout(c, self.recurrent_dropout_factor)

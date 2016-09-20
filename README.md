@@ -13,7 +13,7 @@ Currently Implemented Papers:
 * LSTM With Multiple Memory Arrays
 * Minimal Gated Unit RNN
 * GRU Mutants
-
+* Weight Tying
 
 More Papers to come as they are published. If you have any requests, please use the issues section. 
 
@@ -201,6 +201,7 @@ cell = rnn_cell_modern.JZS3Cell(num_units)
 
 ### Weight Tying
 
+"Using the Output Embedding to Improve Language Models" by Press & Wolf
 https://arxiv.org/abs/1608.05859
 
 Tying the input word embeding to the softmax matrix. Because of the similarities between the input embedding and the softmax matrix (AKA the output embedding), setting them to be equal improves preplexity while reducing the number of parameters in the model. 
