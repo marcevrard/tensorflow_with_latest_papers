@@ -12,6 +12,7 @@ Currently Implemented Papers:
 * Layer Normalization & Multiplicative Integration
 * LSTM With Multiple Memory Arrays
 * Minimal Gated Unit RNN
+* Residual Connections Within Stacked RNNs
 * GRU Mutants
 * Weight Tying
 
@@ -182,6 +183,22 @@ import rnn_cell_modern
 cell = rnn_cell_modern.MGUCell(num_units, use_multiplicative_integration = True, use_recurrent_dropout = False, forget_bias_initialization = 1.0)
 
 ```
+
+### Residual Connections Within Stacked RNNs
+
+Implementation of Residual Connections as used in Google's Translation System:
+https://arxiv.org/abs/1609.08144
+
+This will allow for stacking multiple RNN layers with improved result due to residual connections. Inputs of the previous layer and added to the current input of the current layer.
+
+```python
+import rnn_wrappers_modern
+
+cell = DesiredRNNCell(num_units)
+
+stacked_cells = rnn_wrappers_modern.MultiRNNCell([cell]*4, use_residual_connections = True) #stacks 4 layers
+```
+
 
 ### GRU Mutants
 
