@@ -88,7 +88,7 @@ class PTBModel(object):
     self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
     self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
-    # rnn_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=1.0)
+    # rnn_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=1.0, state_is_tuple=True)
     # rnn_cell = rnn_cell_modern.HighwayRNNCell(size)
     # rnn_cell = rnn_cell_modern.JZS1Cell(size)
     # rnn_cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
@@ -107,7 +107,7 @@ class PTBModel(object):
     if is_training and config.keep_prob < 1:
       rnn_cell = tf.nn.rnn_cell.DropoutWrapper(
           rnn_cell, output_keep_prob=config.keep_prob)
-    cell = tf.nn.rnn_cell.MultiRNNCell([rnn_cell] * config.num_layers)
+    cell = tf.nn.rnn_cell.MultiRNNCell([rnn_cell] * config.num_layers, state_is_tuple=True)
 
     self._initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -133,7 +133,7 @@ class PTBModel(object):
     with tf.variable_scope("RNN"):
       for time_step in range(num_steps):
         if time_step > 0: tf.get_variable_scope().reuse_variables()
-        (cell_output, state) = cell(inputs[:, time_step, :], state)
+        (cell_output, state) = cell(inputs[time_step], state)
         outputs.append(cell_output)
 
     output = tf.reshape(tf.concat(1, outputs), [-1, size])
@@ -261,7 +261,7 @@ def run_epoch(session, m, data, eval_op, verbose=False):
   start_time = time.time()
   costs = 0.0
   iters = 0
-  state = m.initial_state.eval()
+  state = session.run(m.initial_state)
   for step, (x, y) in enumerate(reader.ptb_iterator(data, m.batch_size,
                                                     m.num_steps)):
     cost, state, _ = session.run([m.cost, m.final_state, eval_op],
