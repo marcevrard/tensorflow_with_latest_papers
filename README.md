@@ -24,6 +24,8 @@ skype: lea vesbr eat he thisisjunk(eliminate all spaces and ignore junk part)
 
 email: sh a hn s [at ] m ail.u c.ed u thisisjunk(eliminate all spaces and ignore junk part)
 
+linkedin: www.linkedin.com/in/NickShahML
+
 
 ### To Test These New Papers
 
@@ -33,7 +35,7 @@ If you would like to test these new features, you can:
 
 Simply modify the `rnn_cell` variable under the `PTBModel`
 
-Please run with Tensorflow 0.8 or higher
+Please run with TensorFlow 0.10 or higher
 
 
 ### Highway Networks
