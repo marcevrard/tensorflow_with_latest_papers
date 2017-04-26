@@ -393,3 +393,83 @@ class JZS3Cell(RNNCell):
 
       return h_t, h_t #there is only one hidden state output to keep track of. 
       #This makes it more mem efficient than LSTM
+
+
+
+class Delta_RNN(RNNCell):
+  """
+  From https://arxiv.org/pdf/1703.08864.pdf
+
+  Implements a second order Delta RNN with inner and outer functions
+
+  """
+
+  def __init__(self, num_units):
+    self._num_units = num_units
+
+  @property
+  def input_size(self):
+    return self._num_units
+
+  @property
+  def output_size(self):
+    return self._num_units
+
+  @property
+  def state_size(self):
+    return self._num_units
+
+  def _outer_function(self, inner_function_output, past_hidden_state, activation=tf.nn.relu,
+    wx_parameterization_gate=True):
+    """Simulates Equation 3 in Delta RNN paper
+
+    r, the gate, can be parameterized in many different ways.
+    """
+
+    assert inner_function_output.get_shape().as_list() == past_hidden_state.get_shape().as_list()
+    r = tf.get_variable("outer_function_gate", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer)
+
+    # Equation 5 in Delta Rnn Paper
+    if wx_parameterization_gate:
+      r = self._W_x_inputs + r
+
+    gate = tf.nn.sigmoid(r)
+
+    output = activation(
+      (1.0 - gate) * inner_function_output + gate * past_hidden_state)
+
+    return output
+
+  def _inner_function(self, inputs, past_hidden_state, activation=tf.nn.tanh):
+    """second order function as described equation 11 in delta rnn paper
+    The main goal is to produce z_t of this function
+    """
+    V_x_d = linear(past_hidden_state, self._num_units, True)
+
+    # We make this a private variable to be reused in the _outer_function
+    self._W_x_inputs = linear(inputs, self._num_units, True)
+
+    alpha = tf.get_variable("alpha", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+
+    beta_one = tf.get_variable("beta_one", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+
+    beta_two = tf.get_variable("beta_two", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+
+    z_t_bias = tf.get_variable("z_t_bias", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer)
+
+    # Second Order Cell Calculations
+    d_1_t = alpha * V_x_d * self._W_x_inputs
+    d_2_t = beta_one * V_x_d + beta_two * self._W_x_inputs
+
+    z_t = activation(d_1_t + d_2_t + z_t_bias)
+
+    return z_t
+
+
+
+  def __call__(self, inputs, state, scope=None):
+    inner_function_output = self._inner_function(inputs, state)
+    output = self._outer_function(inner_function_output, state)  
+
+    return output, output #there is only one hidden state output to keep track of. 
+    #This makes it more mem efficient than LSTM

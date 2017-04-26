@@ -4,6 +4,7 @@
 
 Currently Implemented Papers:
 
+* Delta RNN
 * Highway Networks
 * Recurrent Highway Networks
 * Multiplicative Integration Within RNNs
@@ -37,6 +38,21 @@ Simply modify the `rnn_cell` variable under the `PTBModel`
 
 Please run with TensorFlow 0.10 or higher
 
+
+### Delta RNN
+
+https://arxiv.org/pdf/1703.08864.pdf
+
+Light yet powerful RNN that beats LSTM on multiple tests. Implemented second order delta rnn cell
+
+```python
+import rnn_cell_modern
+
+rnn_cell = rnn_cell_modern.Delta_RNN(inputs, num_units = 1024)
+
+# To Call
+output, new_state = rnn_cell(inputs, state)
+```
 
 ### Highway Networks
 
