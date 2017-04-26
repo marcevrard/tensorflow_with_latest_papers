@@ -401,7 +401,6 @@ class Delta_RNN(RNNCell):
   From https://arxiv.org/pdf/1703.08864.pdf
 
   Implements a second order Delta RNN with inner and outer functions
-
   """
 
   def __init__(self, num_units):
@@ -472,4 +471,3 @@ class Delta_RNN(RNNCell):
     output = self._outer_function(inner_function_output, state)  
 
     return output, output #there is only one hidden state output to keep track of. 
-    #This makes it more mem efficient than LSTM
