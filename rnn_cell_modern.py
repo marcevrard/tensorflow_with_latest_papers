@@ -1,4 +1,5 @@
-'''Module for constructing RNN Cells
+'''
+Module for constructing RNN Cells
 '''
 
 from __future__ import absolute_import, division, print_function
