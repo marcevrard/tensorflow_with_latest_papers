@@ -9,7 +9,7 @@ Reference http://arxiv.org/abs/1511.06464
 import numpy as np
 
 import tensorflow as tf
-rnn_cell = tf.nn.rnn_cell
+from tensorflow.contrib import rnn
 
 from complex_util import *
 
@@ -24,8 +24,8 @@ def ulinear_c(vec_in_c, scope=None, transform='fourier'):
     if len(shape) != 2:
         raise ValueError('Argument vec_in_c must be a batch of vectors (2D tensor).')
     if transform == 'fourier':
-        fwd_trans = tf.batch_fft
-        inv_trans = tf.batch_ifft
+        fwd_trans = tf.fft
+        inv_trans = tf.ifft
     elif transform == 'hadamard':
         fwd_trans = batch_fht
         inv_trans = batch_fht
@@ -69,11 +69,11 @@ def batch_fht(input):
         idx_u = idx+[ slice(0,l), slice(0,1), slice(0,r) ]
         idx_v = idx+[ slice(0,l), slice(1,2), slice(0,r) ]
         u,v = output[tuple(idx_u)],output[tuple(idx_v)]
-        output = tf.concat(len(mid_shape)-2, [u+v,u-v])
+        output = tf.concat(axis=len(mid_shape)-2, values=[u+v,u-v])
     return tf.reshape(output, in_shape)
 
 
-class UnitaryRNNCell(rnn_cell.RNNCell):
+class UnitaryRNNCell(rnn.RNNCell):
     def __init__(self, num_units, input_size=None, transform='fourier'):
         self._num_units = num_units
         self._input_size = num_units if input_size==None else input_size
@@ -103,18 +103,18 @@ class UnitaryRNNCell(rnn_cell.RNNCell):
 
             in_proj = tf.matmul(inputs, mat_in)
             in_proj_c = tf.complex( in_proj[:, :self.state_size], in_proj[:, self.state_size:] )
-            out_state = modrelu_c( in_proj_c + 
+            out_state = modrelu_c( in_proj_c +
                 ulinear_c(state,transform=self.transform),
                 tf.get_variable(name='B', dtype=tf.float32, shape=[self.state_size], initializer=zero_initer)
                 )
             out_bias = tf.get_variable(name='B_out', dtype=tf.float32, shape=[self.output_size], initializer = zero_initer)
-            out = tf.matmul( tf.concat(1,[tf.real(out_state), tf.imag(out_state)] ), mat_out ) + out_bias
+            out = tf.matmul( tf.concat(axis=1,values=[tf.real(out_state), tf.imag(out_state)] ), mat_out ) + out_bias
         return out, out_state
 
 
-class UnitaryWrapperCell(rnn_cell.RNNCell):
+class UnitaryWrapperCell(rnn.RNNCell):
     '''this cell allows you to input unitary hidden states into an additional cell 'secondary_cell'
-    For example you can do 
+    For example you can do
     Unitary --> LSTM --> output
     Unitary --> GRU --> output
 
@@ -144,14 +144,14 @@ class UnitaryWrapperCell(rnn_cell.RNNCell):
 
     def __call__(self, inputs, state, scope=None ):
         with tf.variable_scope(scope or type(self).__name__):
-            unitary_hidden_state, secondary_cell_hidden_state = tf.split(1,2,state)
+            unitary_hidden_state, secondary_cell_hidden_state = tf.split(axis=1,num_or_size_splits=2,value=state)
 
 
             mat_in = tf.get_variable('mat_in', [self.input_size, self.state_size*2])
             mat_out = tf.get_variable('mat_out', [self.state_size*2, self.output_size])
-            in_proj = tf.matmul(inputs, mat_in)            
-            in_proj_c = tf.complex(tf.split(1,2,in_proj))
-            out_state = modReLU( in_proj_c + 
+            in_proj = tf.matmul(inputs, mat_in)
+            in_proj_c = tf.complex(tf.split(axis=1,num_or_size_splits=2,value=in_proj))
+            out_state = modReLU( in_proj_c +
                 ulinear(unitary_hidden_state, self.state_size),
                 tf.get_variable(name='bias', dtype=tf.float32, shape=tf.shape(unitary_hidden_state), initializer = tf.constant_initalizer(0.)),
                 scope=scope)
@@ -160,10 +160,10 @@ class UnitaryWrapperCell(rnn_cell.RNNCell):
         with tf.variable_scope('unitary_output'):
             '''computes data linear, unitary linear and summation -- TODO: should be complex output'''
             unitary_linear_output_real = linear.linear([tf.real(out_state), tf.imag(out_state), inputs], True, 0.0)
-        
+
 
         with tf.variable_scope('scale_nonlinearity'):
-            modulus = tf.complex_abs(unitary_linear_output_real)
+            modulus = tf.abs(unitary_linear_output_real)
             rescale = tf.maximum(modulus + hidden_bias, 0.) / (modulus + 1e-7)
 
         #transition to data shortcut connection
@@ -172,4 +172,4 @@ class UnitaryWrapperCell(rnn_cell.RNNCell):
         #out_ = tf.matmul(tf.concat(1,[tf.real(out_state), tf.imag(out_state), ] ), mat_out) + out_bias
 
         #hidden state is complex but output is completely real
-        return out_, out_state #complex 
+        return out_, out_state #complex

@@ -71,7 +71,7 @@ def linear(args, output_size, bias, bias_start=0.0, use_l2_loss = False, use_wei
     if len(args) == 1:
       res = tf.matmul(args[0], matrix)
     else:
-      res = tf.matmul(tf.concat(1, args), matrix)
+      res = tf.matmul(tf.concat(axis=1, values=args), matrix)
 
     if not bias:
       return res
@@ -118,7 +118,7 @@ def batch_timesteps_linear(input, output_size, bias, bias_start=0.0, use_l2_loss
     if use_weight_normalization: matrix = weight_normalization(matrix)
     matrix = tf.tile(tf.expand_dims(matrix, 0), [num_timesteps, 1, 1])
 
-    res = tf.batch_matmul(input, matrix)
+    res = tf.matmul(input, matrix)
 
     if bias:
       bias_term = tf.get_variable(

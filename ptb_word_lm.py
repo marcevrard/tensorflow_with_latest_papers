@@ -60,13 +60,14 @@ import time
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.models.rnn.ptb import reader
+from tensorflow.contrib import rnn
 
 import rnn_cell_layernorm_modern
 import rnn_cell_modern
 import rnn_cell_mulint_layernorm_modern
 import rnn_cell_mulint_modern
 
+from tf_ptb_model_util import reader
 
 flags = tf.flags
 logging = tf.logging
@@ -91,7 +92,7 @@ class PTBModel(object):
         self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
         self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
-        # rnn_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=1.0, state_is_tuple=True)
+        # rnn_cell = rnn.BasicLSTMCell(size, forget_bias=1.0, state_is_tuple=True)
         # rnn_cell = rnn_cell_modern.HighwayRNNCell(size)
         # rnn_cell = rnn_cell_modern.JZS1Cell(size)
         # rnn_cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
@@ -111,8 +112,8 @@ class PTBModel(object):
             size, use_multiplicative_integration=True, use_recurrent_dropout=False)
 
         if is_training and config.keep_prob < 1:
-            rnn_cell = tf.nn.rnn_cell.DropoutWrapper(rnn_cell, output_keep_prob=config.keep_prob)
-        cell = tf.nn.rnn_cell.MultiRNNCell([rnn_cell] * config.num_layers, state_is_tuple=True)
+            rnn_cell = rnn.DropoutWrapper(rnn_cell, output_keep_prob=config.keep_prob)
+        cell = rnn.MultiRNNCell([rnn_cell] * config.num_layers, state_is_tuple=True)
 
         self._initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -142,13 +143,14 @@ class PTBModel(object):
                 (cell_output, state) = cell(inputs[time_step], state)
                 outputs.append(cell_output)
 
-        output = tf.reshape(tf.concat(1, outputs), [-1, size])
+        output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
         softmax_w = tf.transpose(embedding)  # weight tying
         softmax_b = tf.get_variable("softmax_b", [vocab_size])
         logits = tf.matmul(output, softmax_w) + softmax_b
-        loss = tf.nn.seq2seq.sequence_loss_by_example([logits],
-                                                      [tf.reshape(self._targets, [-1])],
-                                                      [tf.ones([batch_size * num_steps])])
+        loss = tf.contrib.legacy_seq2seq.sequence_loss_by_example(
+            [logits],
+            [tf.reshape(self._targets, [-1])],
+            [tf.ones([batch_size * num_steps])])
         self._cost = cost = tf.reduce_sum(loss) / batch_size
         self._final_state = state
 
@@ -267,12 +269,9 @@ def run_epoch(session, m, data, eval_op, verbose=False):
     costs = 0.0
     iters = 0
     state = session.run(m.initial_state)
-    for step, (x, y) in enumerate(reader.ptb_iterator(data, m.batch_size,
-                                                      m.num_steps)):
+    for step, (x, y) in enumerate(reader.ptb_producer(data, m.batch_size, m.num_steps)):
         cost, state, _ = session.run([m.cost, m.final_state, eval_op],
-                                     {m.input_data: x,
-                                      m.targets: y,
-                                      m.initial_state: state})
+                                     {m.input_data: x, m.targets: y, m.initial_state: state})
         costs += cost
         iters += m.num_steps
 
@@ -310,23 +309,21 @@ def main(_):
     eval_config.num_steps = 1
 
     with tf.Graph().as_default(), tf.Session() as session:
-        initializer = tf.random_uniform_initializer(-config.init_scale,
-                                                    config.init_scale)
+        initializer = tf.random_uniform_initializer(-config.init_scale, config.init_scale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):
             m = PTBModel(is_training=True, config=config)
         with tf.variable_scope("model", reuse=True, initializer=initializer):
             mvalid = PTBModel(is_training=False, config=config)
             mtest = PTBModel(is_training=False, config=eval_config)
 
-        tf.initialize_all_variables().run()
+        tf.global_variables_initializer().run()
 
         for i in range(config.max_max_epoch):
             lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)
             m.assign_lr(session, config.learning_rate * lr_decay)
 
             print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
-            train_perplexity = run_epoch(session, m, train_data, m.train_op,
-                                         verbose=True)
+            train_perplexity = run_epoch(session, m, train_data, m.train_op, verbose=True)
             print("Epoch: %d Train Perplexity: %.3f" %
                   (i + 1, train_perplexity))
             valid_perplexity = run_epoch(

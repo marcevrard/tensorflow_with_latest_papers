@@ -3,16 +3,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import math, numpy as np
-from six.moves import xrange 
+from six.moves import xrange
 import tensorflow as tf
 from multiplicative_integration_modern import multiplicative_integration
-from tensorflow.python.ops.nn import rnn_cell
+from tensorflow.contrib import rnn
 import highway_network_modern
 from linear_modern import linear
 import normalization_ops_modern as nom
 from normalization_ops_modern import layer_norm
 
-RNNCell = rnn_cell.RNNCell
+RNNCell = rnn.RNNCell
 
 
 
@@ -44,7 +44,7 @@ class GRUCell_LayerNorm(RNNCell):
         # We start with bias of 1.0 to not reset and not update.
         concated_r_u = layer_norm(linear([inputs, state], 2 * self._num_units, False, 1.0), num_variables_in_tensor = 2, initial_bias_value = 1.0)
 
-        r, u = tf.split(1, 2, tf.sigmoid(concated_r_u))
+        r, u = tf.split(axis=1, num_or_size_splits=2, value=tf.sigmoid(concated_r_u))
 
       with tf.variable_scope("Candidate"):
         with tf.variable_scope("reset_portion"):
@@ -72,7 +72,7 @@ class BasicLSTMCell_LayerNorm(RNNCell):
   def __init__(self, num_units, forget_bias = 1.0, gpu_for_layer = 0, weight_initializer = "uniform_unit", orthogonal_scale_factor = 1.1, use_highway = False, num_highway_layers = 2,
     use_recurrent_dropout = False, recurrent_dropout_factor = 0.90, is_training = True):
     self._num_units = num_units
-    self._gpu_for_layer = gpu_for_layer 
+    self._gpu_for_layer = gpu_for_layer
     self._weight_initializer = weight_initializer
     self._orthogonal_scale_factor = orthogonal_scale_factor
     self._forget_bias = forget_bias
@@ -99,25 +99,25 @@ class BasicLSTMCell_LayerNorm(RNNCell):
       """Long short-term memory cell (LSTM)."""
       with tf.variable_scope(scope or type(self).__name__):  # "BasicLSTMCell"
         # Parameters of gates are concatenated into one multiply for efficiency.
-        h, c = tf.split(1, 2, state)
+        h, c = tf.split(axis=1, num_or_size_splits=2, value=state)
 
         concat = linear([inputs, h], self._num_units * 4, False, 0.0)
 
         concat = layer_norm(concat, num_variables_in_tensor = 4)
 
         # i = input_gate, j = new_input, f = forget_gate, o = output_gate
-        i, j, f, o = tf.split(1, 4, concat)
+        i, j, f, o = tf.split(axis=1, num_or_size_splits=4, value=concat)
 
         if self.use_recurrent_dropout and self.is_training:
           input_contribution = tf.nn.dropout(tf.tanh(j), self.recurrent_dropout_factor)
         else:
-          input_contribution = tf.tanh(j) 
+          input_contribution = tf.tanh(j)
 
         new_c = c * tf.sigmoid(f + self._forget_bias) + tf.sigmoid(i) * input_contribution
-        with tf.variable_scope('new_h_output'): 
+        with tf.variable_scope('new_h_output'):
           new_h = tf.tanh(layer_norm(new_c)) * tf.sigmoid(o)
-    
-      return new_h, tf.concat(1, [new_h, new_c]) #purposely reversed
+
+      return new_h, tf.concat(axis=1, values=[new_h, new_c]) #purposely reversed
 
 
 class HighwayRNNCell_LayerNorm(RNNCell):

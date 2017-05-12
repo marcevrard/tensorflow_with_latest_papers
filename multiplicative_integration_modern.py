@@ -8,11 +8,11 @@ import math, numpy as np, itertools
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 import linear_modern as linear
-from tensorflow.python.ops.nn import rnn_cell
+from tensorflow.contrib import rnn
 import highway_network_modern
 
 
-RNNCell = rnn_cell.RNNCell
+RNNCell = rnn.RNNCell
 
 
 '''the classes here contain integrative multiplication versions of the RNN which converge faster and lead to better scores
@@ -28,7 +28,7 @@ def multiplicative_integration(list_of_inputs, output_size, initial_bias_value =
     '''
     with tf.variable_scope(scope or 'double_inputs_multiple_integration'):
       if len(list_of_inputs) != 2: raise ValueError('list of inputs must be 2, you have:', len(list_of_inputs))
-      
+
       if weights_already_calculated: #if you already have weights you want to insert from batch norm
         Wx = list_of_inputs[0]
         Uz = list_of_inputs[1]
@@ -40,15 +40,15 @@ def multiplicative_integration(list_of_inputs, output_size, initial_bias_value =
           Uz = linear.linear(list_of_inputs[1], output_size, False, use_l2_loss = use_l2_loss, timestep = timestep)
 
       with tf.variable_scope("multiplicative_integration"):
-        alpha = tf.get_variable('mulint_alpha', [output_size], 
+        alpha = tf.get_variable('mulint_alpha', [output_size],
             initializer = tf.truncated_normal_initializer(mean = 1.0, stddev = 0.1))
-        
-        beta1, beta2 = tf.split(0,2,
-          tf.get_variable('mulint_params_betas', [output_size*2], 
-            initializer = tf.truncated_normal_initializer(mean = 0.5, stddev = 0.1))) 
 
-        original_bias = tf.get_variable('mulint_original_bias', [output_size], 
-            initializer = tf.truncated_normal_initializer(mean = initial_bias_value, stddev = 0.1)) 
+        beta1, beta2 = tf.split(axis=0,num_or_size_splits=2,
+          value=tf.get_variable('mulint_params_betas', [output_size*2],
+            initializer = tf.truncated_normal_initializer(mean = 0.5, stddev = 0.1)))
+
+        original_bias = tf.get_variable('mulint_original_bias', [output_size],
+            initializer = tf.truncated_normal_initializer(mean = initial_bias_value, stddev = 0.1))
 
       final_output = alpha*Wx*Uz + beta1*Uz + beta2*Wx + original_bias
 

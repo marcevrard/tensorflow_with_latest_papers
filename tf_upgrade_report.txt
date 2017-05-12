@@ -1,0 +1,574 @@
+================================================================================
+Input tree: 'tf_modern'
+================================================================================
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/__init__.py'
+ outputting to 'tf_modern_tf110/__init__.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/rnn_cell_mulint_layernorm_modern.py'
+ outputting to 'tf_modern_tf110/rnn_cell_mulint_layernorm_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/rnn_cell_mulint_layernorm_modern.py' Line 54
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:           r, u = tf.split(1, 2, tf.sigmoid(
+                                                     
+    New:           r, u = tf.split(axis=1, num_or_size_splits=2, value=tf.sigmoid(
+                                   ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~            
+
+'tf_modern/rnn_cell_mulint_layernorm_modern.py' Line 109
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         h, c = tf.split(1, 2, state)
+                                              
+    New:         h, c = tf.split(axis=1, num_or_size_splits=2, value=state)
+                                 ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~       
+
+'tf_modern/rnn_cell_mulint_layernorm_modern.py' Line 121
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+
+    Old:         i, j, f, o = tf.split(1, 4,
+                                             
+    New:         i, j, f, o = tf.split(axis=1, num_or_size_splits=4,
+                                       ~~~~~   ~~~~~~~~~~~~~~~~~~~   
+
+'tf_modern/rnn_cell_mulint_layernorm_modern.py' Line 122
+--------------------------------------------------------------------------------
+
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:           multiplicative_integration([inputs_concat,h_concat], 4*self._num_units, 0.0, weights_already_calculated = True))
+                                                                                                                                    
+    New:           value=multiplicative_integration([inputs_concat,h_concat], 4*self._num_units, 0.0, weights_already_calculated = True))
+                   ~~~~~~                                                                                                                 
+
+'tf_modern/rnn_cell_mulint_layernorm_modern.py' Line 130
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       return new_h, tf.concat(1, [new_h, new_c]) #reversed this
+                                                                         
+    New:       return new_h, tf.concat(axis=1, values=[new_h, new_c]) #reversed this
+                                       ~~~~~   ~~~~~~~                               
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/weight_normalization.py'
+ outputting to 'tf_modern_tf110/weight_normalization.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/rnn_cell_modern.py'
+ outputting to 'tf_modern_tf110/rnn_cell_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/rnn_cell_modern.py' Line 213
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:             hidden_state_plus_c_list = tf.split(1, self.num_memory_arrays + 1, state)
+                                                                                               
+    New:             hidden_state_plus_c_list = tf.split(axis=1, num_or_size_splits=self.num_memory_arrays + 1, value=state)
+                                                         ~~~~~   ~~~~~~~~~~~~~~~~~~~                            ~~~~~~       
+
+'tf_modern/rnn_cell_modern.py' Line 233
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:             all_vars_list = tf.split(1, 4 * self.num_memory_arrays, concat)
+                                                                                     
+    New:             all_vars_list = tf.split(axis=1, num_or_size_splits=4 * self.num_memory_arrays, value=concat)
+                                              ~~~~~   ~~~~~~~~~~~~~~~~~~~                            ~~~~~~        
+
+'tf_modern/rnn_cell_modern.py' Line 263
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         return new_h, tf.concat(1, [new_h] + new_c_list)  # purposely reversed
+                                                                                        
+    New:         return new_h, tf.concat(axis=1, values=[new_h] + new_c_list)  # purposely reversed
+                                         ~~~~~   ~~~~~~~                                            
+
+'tf_modern/rnn_cell_modern.py' Line 460
+--------------------------------------------------------------------------------
+
+Changed 'tf.zeros_initializer' to 'tf.zeros_initializer()'
+
+    Old:                             initializer=tf.zeros_initializer)
+                                                 ~~~~~~~~~~~~~~~~~~~~  
+    New:                             initializer=tf.zeros_initializer())
+                                                 ~~~~~~~~~~~~~~~~~~~~~~  
+
+'tf_modern/rnn_cell_modern.py' Line 483
+--------------------------------------------------------------------------------
+
+Changed 'tf.ones_initializer' to 'tf.ones_initializer()'
+
+    Old:             "alpha", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+                                                                               ~~~~~~~~~~~~~~~~~~~  
+    New:             "alpha", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
+                                                                               ~~~~~~~~~~~~~~~~~~~~~  
+
+'tf_modern/rnn_cell_modern.py' Line 486
+--------------------------------------------------------------------------------
+
+Changed 'tf.ones_initializer' to 'tf.ones_initializer()'
+
+    Old:             "beta_one", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+                                                                                  ~~~~~~~~~~~~~~~~~~~  
+    New:             "beta_one", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
+                                                                                  ~~~~~~~~~~~~~~~~~~~~~  
+
+'tf_modern/rnn_cell_modern.py' Line 489
+--------------------------------------------------------------------------------
+
+Changed 'tf.ones_initializer' to 'tf.ones_initializer()'
+
+    Old:             "beta_two", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+                                                                                  ~~~~~~~~~~~~~~~~~~~  
+    New:             "beta_two", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
+                                                                                  ~~~~~~~~~~~~~~~~~~~~~  
+
+'tf_modern/rnn_cell_modern.py' Line 492
+--------------------------------------------------------------------------------
+
+Changed 'tf.zeros_initializer' to 'tf.zeros_initializer()'
+
+    Old:             "z_t_bias", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer)
+                                                                                  ~~~~~~~~~~~~~~~~~~~~  
+    New:             "z_t_bias", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer())
+                                                                                  ~~~~~~~~~~~~~~~~~~~~~~  
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/normalization_ops_modern.py'
+ outputting to 'tf_modern_tf110/normalization_ops_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/normalization_ops_modern.py' Line 42
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:       input_tensor_list = tf.split(1, num_variables_in_tensor, input_tensor)
+                                                                                      
+    New:       input_tensor_list = tf.split(axis=1, num_or_size_splits=num_variables_in_tensor, value=input_tensor)
+                                            ~~~~~   ~~~~~~~~~~~~~~~~~~~                         ~~~~~~              
+
+'tf_modern/normalization_ops_modern.py' Line 43
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:       alpha_list = tf.split(0, num_variables_in_tensor, alpha)
+                                                                        
+    New:       alpha_list = tf.split(axis=0, num_or_size_splits=num_variables_in_tensor, value=alpha)
+                                     ~~~~~   ~~~~~~~~~~~~~~~~~~~                         ~~~~~~       
+
+'tf_modern/normalization_ops_modern.py' Line 44
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:       bias_list = tf.split(0, num_variables_in_tensor, bias)
+                                                                      
+    New:       bias_list = tf.split(axis=0, num_or_size_splits=num_variables_in_tensor, value=bias)
+                                    ~~~~~   ~~~~~~~~~~~~~~~~~~~                         ~~~~~~      
+
+'tf_modern/normalization_ops_modern.py' Line 57
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       return tf.concat(1, list_of_layer_normed_results)
+                                                                 
+    New:       return tf.concat(axis=1, values=list_of_layer_normed_results)
+                                ~~~~~   ~~~~~~~                              
+
+'tf_modern/normalization_ops_modern.py' Line 65
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.op_scope' to 'tf.name_scope'
+Added keyword 'values' to reordered function 'tf.op_scope'
+Added keyword 'name' to reordered function 'tf.op_scope'
+Added keyword 'default_name' to reordered function 'tf.op_scope'
+
+    Old:   with tf.op_scope([x, axes], name, "moments"):
+                ~~~~~~~~~~~                              
+    New:   with tf.name_scope(values=[x, axes], name=name, default_name="moments"):
+                ~~~~~~~~~~~~~ ~~~~~~~           ~~~~~      ~~~~~~~~~~~~~            
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/partial_ordering_embedding.py'
+ outputting to 'tf_modern_tf110/partial_ordering_embedding.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/rnn_cell_layernorm_modern.py'
+ outputting to 'tf_modern_tf110/rnn_cell_layernorm_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/rnn_cell_layernorm_modern.py' Line 47
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         r, u = tf.split(1, 2, tf.sigmoid(concated_r_u))
+                                                                 
+    New:         r, u = tf.split(axis=1, num_or_size_splits=2, value=tf.sigmoid(concated_r_u))
+                                 ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~                          
+
+'tf_modern/rnn_cell_layernorm_modern.py' Line 102
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         h, c = tf.split(1, 2, state)
+                                              
+    New:         h, c = tf.split(axis=1, num_or_size_splits=2, value=state)
+                                 ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~       
+
+'tf_modern/rnn_cell_layernorm_modern.py' Line 109
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         i, j, f, o = tf.split(1, 4, concat)
+                                                     
+    New:         i, j, f, o = tf.split(axis=1, num_or_size_splits=4, value=concat)
+                                       ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~        
+
+'tf_modern/rnn_cell_layernorm_modern.py' Line 120
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       return new_h, tf.concat(1, [new_h, new_c]) #purposely reversed
+                                                                              
+    New:       return new_h, tf.concat(axis=1, values=[new_h, new_c]) #purposely reversed
+                                       ~~~~~   ~~~~~~~                                    
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/linear_modern.py'
+ outputting to 'tf_modern_tf110/linear_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/linear_modern.py' Line 74
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       res = tf.matmul(tf.concat(1, args), matrix)
+                                                           
+    New:       res = tf.matmul(tf.concat(axis=1, values=args), matrix)
+                                         ~~~~~   ~~~~~~~               
+
+'tf_modern/linear_modern.py' Line 121
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.batch_matmul' to 'tf.matmul'
+
+    Old:     res = tf.batch_matmul(input, matrix)
+                   ~~~~~~~~~~~~~~~                
+    New:     res = tf.matmul(input, matrix)
+                   ~~~~~~~~~                
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/complex_util.py'
+ outputting to 'tf_modern_tf110/complex_util.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/complex_util.py' Line 38
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.complex_abs' to 'tf.abs'
+
+    Old:     n = tf.complex_abs(in_c)
+                 ~~~~~~~~~~~~~~       
+    New:     n = tf.abs(in_c)
+                 ~~~~~~       
+
+'tf_modern/complex_util.py' Line 45
+--------------------------------------------------------------------------------
+
+Renamed keyword argument from 'reduction_indices' to 'axis'
+
+    Old:             reduction_indices=len(in_c.get_shape().as_list())-1
+                     ~~~~~~~~~~~~~~~~~~                                  
+    New:             axis=len(in_c.get_shape().as_list())-1
+                     ~~~~~                                  
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/reader.py'
+ outputting to 'tf_modern_tf110/reader.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/multiplicative_integration_modern.py'
+ outputting to 'tf_modern_tf110/multiplicative_integration_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/multiplicative_integration_modern.py' Line 46
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+
+    Old:         beta1, beta2 = tf.split(0,2,
+                                              
+    New:         beta1, beta2 = tf.split(axis=0,num_or_size_splits=2,
+                                         ~~~~~  ~~~~~~~~~~~~~~~~~~~   
+
+'tf_modern/multiplicative_integration_modern.py' Line 47
+--------------------------------------------------------------------------------
+
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:           tf.get_variable('mulint_params_betas', [output_size*2],
+                                                                           
+    New:           value=tf.get_variable('mulint_params_betas', [output_size*2],
+                   ~~~~~~                                                        
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/highway_network_modern.py'
+ outputting to 'tf_modern_tf110/highway_network_modern.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/rnn_wrappers_modern.py'
+ outputting to 'tf_modern_tf110/rnn_wrappers_modern.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/unitary_rnn_cell_modern.py'
+ outputting to 'tf_modern_tf110/unitary_rnn_cell_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 27
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.batch_fft' to 'tf.fft'
+
+    Old:         fwd_trans = tf.batch_fft
+                             ~~~~~~~~~~~~ 
+    New:         fwd_trans = tf.fft
+                             ~~~~~~ 
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 28
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.batch_ifft' to 'tf.ifft'
+
+    Old:         inv_trans = tf.batch_ifft
+                             ~~~~~~~~~~~~~ 
+    New:         inv_trans = tf.ifft
+                             ~~~~~~~ 
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 72
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         output = tf.concat(len(mid_shape)-2, [u+v,u-v])
+                                                                 
+    New:         output = tf.concat(axis=len(mid_shape)-2, values=[u+v,u-v])
+                                    ~~~~~                  ~~~~~~~           
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 111
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:             out = tf.matmul( tf.concat(1,[tf.real(out_state), tf.imag(out_state)] ), mat_out ) + out_bias
+                                                                                                                   
+    New:             out = tf.matmul( tf.concat(axis=1,values=[tf.real(out_state), tf.imag(out_state)] ), mat_out ) + out_bias
+                                                ~~~~~  ~~~~~~~                                                                 
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 147
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:             unitary_hidden_state, secondary_cell_hidden_state = tf.split(1,2,state)
+                                                                                             
+    New:             unitary_hidden_state, secondary_cell_hidden_state = tf.split(axis=1,num_or_size_splits=2,value=state)
+                                                                                  ~~~~~  ~~~~~~~~~~~~~~~~~~~  ~~~~~~       
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 153
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:             in_proj_c = tf.complex(tf.split(1,2,in_proj))
+                                                                   
+    New:             in_proj_c = tf.complex(tf.split(axis=1,num_or_size_splits=2,value=in_proj))
+                                                     ~~~~~  ~~~~~~~~~~~~~~~~~~~  ~~~~~~          
+
+'tf_modern/unitary_rnn_cell_modern.py' Line 166
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.complex_abs' to 'tf.abs'
+
+    Old:             modulus = tf.complex_abs(unitary_linear_output_real)
+                               ~~~~~~~~~~~~~~                             
+    New:             modulus = tf.abs(unitary_linear_output_real)
+                               ~~~~~~                             
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/rnn_cell_mulint_modern.py'
+ outputting to 'tf_modern_tf110/rnn_cell_mulint_modern.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/rnn_cell_mulint_modern.py' Line 76
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+
+    Old:         r, u = tf.split(1,2,
+                                      
+    New:         r, u = tf.split(axis=1,num_or_size_splits=2,
+                                 ~~~~~  ~~~~~~~~~~~~~~~~~~~   
+
+'tf_modern/rnn_cell_mulint_modern.py' Line 77
+--------------------------------------------------------------------------------
+
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:           tf.sigmoid(multiplicative_integration([inputs, state], self._num_units * 2, 1.0)))
+                                                                                                      
+    New:           value=tf.sigmoid(multiplicative_integration([inputs, state], self._num_units * 2, 1.0)))
+                   ~~~~~~                                                                                   
+
+'tf_modern/rnn_cell_mulint_modern.py' Line 135
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         h, c = tf.split(1, 2, state)
+                                              
+    New:         h, c = tf.split(axis=1, num_or_size_splits=2, value=state)
+                                 ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~       
+
+'tf_modern/rnn_cell_mulint_modern.py' Line 140
+--------------------------------------------------------------------------------
+
+Added keyword 'axis' to reordered function 'tf.split'
+Added keyword 'num_or_size_splits' to reordered function 'tf.split'
+Added keyword 'value' to reordered function 'tf.split'
+
+    Old:         i, j, f, o = tf.split(1, 4, concat)
+                                                     
+    New:         i, j, f, o = tf.split(axis=1, num_or_size_splits=4, value=concat)
+                                       ~~~~~   ~~~~~~~~~~~~~~~~~~~   ~~~~~~        
+
+'tf_modern/rnn_cell_mulint_modern.py' Line 150
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:       return new_h, tf.concat(1, [new_h, new_c]) #purposely reversed
+                                                                              
+    New:       return new_h, tf.concat(axis=1, values=[new_h, new_c]) #purposely reversed
+                                       ~~~~~   ~~~~~~~                                    
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/ptb_word_lm.py'
+ outputting to 'tf_modern_tf110/ptb_word_lm.py'
+--------------------------------------------------------------------------------
+
+'tf_modern/ptb_word_lm.py' Line 146
+--------------------------------------------------------------------------------
+
+Added keyword 'concat_dim' to reordered function 'tf.concat'
+Added keyword 'values' to reordered function 'tf.concat'
+
+    Old:         output = tf.reshape(tf.concat(1, outputs), [-1, size])
+                                                                        
+    New:         output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
+                                               ~~~~~   ~~~~~~~                      
+
+'tf_modern/ptb_word_lm.py' Line 322
+--------------------------------------------------------------------------------
+
+Renamed function 'tf.initialize_all_variables' to 'tf.global_variables_initializer'
+
+    Old:         tf.initialize_all_variables().run()
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+    New:         tf.global_variables_initializer().run()
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~         
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/reader_test.py'
+ outputting to 'tf_modern_tf110/reader_test.py'
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+Processing file 'tf_modern/tf_ptb_model_util/reader.py'
+ outputting to 'tf_modern_tf110/tf_ptb_model_util/reader.py'
+--------------------------------------------------------------------------------
+
+

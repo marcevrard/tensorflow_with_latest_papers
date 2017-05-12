@@ -39,9 +39,9 @@ def layer_norm(input_tensor, num_variables_in_tensor = 1, initial_bias_value = 0
       bias_list = [bias]
 
     else:
-      input_tensor_list = tf.split(1, num_variables_in_tensor, input_tensor)
-      alpha_list = tf.split(0, num_variables_in_tensor, alpha)
-      bias_list = tf.split(0, num_variables_in_tensor, bias)
+      input_tensor_list = tf.split(axis=1, num_or_size_splits=num_variables_in_tensor, value=input_tensor)
+      alpha_list = tf.split(axis=0, num_or_size_splits=num_variables_in_tensor, value=alpha)
+      bias_list = tf.split(axis=0, num_or_size_splits=num_variables_in_tensor, value=bias)
 
     list_of_layer_normed_results = []
     for counter in xrange(num_variables_in_tensor):
@@ -54,7 +54,7 @@ def layer_norm(input_tensor, num_variables_in_tensor = 1, initial_bias_value = 0
     if num_variables_in_tensor == 1:
       return list_of_layer_normed_results[0]
     else:
-      return tf.concat(1, list_of_layer_normed_results)
+      return tf.concat(axis=1, values=list_of_layer_normed_results)
 
 
 def moments_for_layer_norm(x, axes = 1, name = None, epsilon = 0.001):
@@ -62,7 +62,7 @@ def moments_for_layer_norm(x, axes = 1, name = None, epsilon = 0.001):
 
   if not isinstance(axes, list): axes = list(axes)
 
-  with tf.op_scope([x, axes], name, "moments"):
+  with tf.name_scope(values=[x, axes], name=name, default_name="moments"):
     mean = tf.reduce_mean(x, axes, keep_dims = True)
 
     variance = tf.sqrt(tf.reduce_mean(tf.square(x - mean), axes, keep_dims = True) + epsilon)

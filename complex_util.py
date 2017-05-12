@@ -35,14 +35,14 @@ def modrelu_c(in_c, bias):
         raise(ValueError('modrelu_c: Argument in_c must be complex type'))
     if bias.dtype.is_complex:
         raise(ValueError('modrelu_c: Argument bias must be real type'))
-    n = tf.complex_abs(in_c)
+    n = tf.abs(in_c)
     scale = 1./(n+1e-5)
     return complex_mul_real(in_c, ( tf.nn.relu(n+bias)*scale ))
 
 def normalize_c(in_c):
     norm = tf.reduce_sum(
             abs2_c(in_c),
-            reduction_indices=len(in_c.get_shape().as_list())-1
+            axis=len(in_c.get_shape().as_list())-1
             )
     return tf.transpose(complex_mul_real(tf.transpose(in_c),1./(1e-5+tf.transpose(norm))))
 

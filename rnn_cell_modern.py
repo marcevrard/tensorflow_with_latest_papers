@@ -8,7 +8,7 @@ import math
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.python.ops.nn import rnn_cell
+from tensorflow.contrib import rnn
 
 import highway_network_modern
 from linear_modern import linear
@@ -20,7 +20,7 @@ from six.moves import xrange
 #                                         multiplicative_integration_for_multiple_inputs)
 
 
-RNNCell = rnn_cell.RNNCell
+RNNCell = rnn.RNNCell
 
 
 class HighwayRNNCell(RNNCell):
@@ -210,7 +210,7 @@ class LSTMCell_MemoryArray(RNNCell):
     def __call__(self, inputs, state, timestep=0, scope=None):
         with tf.variable_scope(scope or type(self).__name__):  # "BasicLSTMCell"
             # Parameters of gates are concatenated into one multiply for efficiency.
-            hidden_state_plus_c_list = tf.split(1, self.num_memory_arrays + 1, state)
+            hidden_state_plus_c_list = tf.split(axis=1, num_or_size_splits=self.num_memory_arrays + 1, value=state)
 
             h = hidden_state_plus_c_list[0]
             c_list = hidden_state_plus_c_list[1:]
@@ -230,7 +230,7 @@ class LSTMCell_MemoryArray(RNNCell):
 
             # i = input_gate, j = new_input, f = forget_gate, o = output_gate
             # -- comes in sets of fours
-            all_vars_list = tf.split(1, 4 * self.num_memory_arrays, concat)
+            all_vars_list = tf.split(axis=1, num_or_size_splits=4 * self.num_memory_arrays, value=concat)
 
             ## memory array loop
             new_c_list, new_h_list = [], []
@@ -260,7 +260,7 @@ class LSTMCell_MemoryArray(RNNCell):
             ## sum all new_h components -- could instead do a mean -- but investigate that later
             new_h = tf.add_n(new_h_list)
 
-        return new_h, tf.concat(1, [new_h] + new_c_list)  # purposely reversed
+        return new_h, tf.concat(axis=1, values=[new_h] + new_c_list)  # purposely reversed
 
 
 class JZS1Cell(RNNCell):
@@ -457,7 +457,7 @@ class Delta_RNN(RNNCell):
         assert (inner_function_output.get_shape().as_list() ==
                 past_hidden_state.get_shape().as_list())
         r = tf.get_variable("outer_function_gate", [self._num_units], dtype=tf.float32,
-                            initializer=tf.zeros_initializer)
+                            initializer=tf.zeros_initializer())
 
         # Equation 5 in Delta Rnn Paper
         if wx_parameterization_gate:
@@ -480,16 +480,16 @@ class Delta_RNN(RNNCell):
         self._W_x_inputs = linear(inputs, self._num_units, True)
 
         alpha = tf.get_variable(
-            "alpha", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+            "alpha", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
 
         beta_one = tf.get_variable(
-            "beta_one", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+            "beta_one", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
 
         beta_two = tf.get_variable(
-            "beta_two", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer)
+            "beta_two", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
 
         z_t_bias = tf.get_variable(
-            "z_t_bias", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer)
+            "z_t_bias", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer())
 
         # Second Order Cell Calculations
         d_1_t = alpha * V_x_d * self._W_x_inputs

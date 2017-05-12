@@ -3,12 +3,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import math, numpy as np
-from six.moves import xrange 
+from six.moves import xrange
 import tensorflow as tf
-from tensorflow.python.ops.nn import rnn_cell
+from tensorflow.contrib import rnn
 from linear_modern import linear
 
-RNNCell = rnn_cell.RNNCell
+RNNCell = rnn.RNNCell
 
 
 class MultiRNNCell(RNNCell):
