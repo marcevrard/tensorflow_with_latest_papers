@@ -55,29 +55,26 @@ $ python ptb_word_lm.py --data_path=simple-examples/data/
 from __future__ import absolute_import, division, print_function
 
 import os
-import sys
 import time
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import rnn
 
-import rnn_cell_layernorm_modern
-import rnn_cell_modern
-import rnn_cell_mulint_layernorm_modern
-import rnn_cell_mulint_modern
+import rnn_cell_layernorm_modern            # pylint: disable=unused-import
+import rnn_cell_modern                      # pylint: disable=unused-import
+import rnn_cell_mulint_layernorm_modern     # pylint: disable=unused-import
+import rnn_cell_mulint_modern               # pylint: disable=unused-import
 
 from tf_ptb_model_util import reader
 
-flags = tf.flags
-logging = tf.logging
 
-flags.DEFINE_string(
+tf.flags.DEFINE_string(
     "model", "small",
     "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", os.path.expanduser('~') + '/ptb', "data_path")
+tf.flags.DEFINE_string("data_path", os.path.expanduser('~') + '/ptb', "data_path")
 
-FLAGS = flags.FLAGS
+FLAGS = tf.flags.FLAGS
 
 
 class PTBModel(object):
@@ -92,30 +89,30 @@ class PTBModel(object):
         self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
         self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
-        # rnn_cell = rnn.BasicLSTMCell(size, forget_bias=1.0, state_is_tuple=True)
-        # rnn_cell = rnn_cell_modern.HighwayRNNCell(size)
-        # rnn_cell = rnn_cell_modern.JZS1Cell(size)
-        # rnn_cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
-        # rnn_cell = rnn_cell_mulint_modern.GRUCell_MulInt(size)
-        # rnn_cell = rnn_cell_mulint_modern.BasicLSTMCell_MulInt(size)
-        # rnn_cell = rnn_cell_mulint_modern.HighwayRNNCell_MulInt(size)
-        # rnn_cell = rnn_cell_mulint_layernorm_modern.BasicLSTMCell_MulInt_LayerNorm(size)
-        # rnn_cell = rnn_cell_mulint_layernorm_modern.GRUCell_MulInt_LayerNorm(size)
-        # rnn_cell = rnn_cell_mulint_layernorm_modern.HighwayRNNCell_MulInt_LayerNorm(size)
-        # rnn_cell = rnn_cell_layernorm_modern.BasicLSTMCell_LayerNorm(size)
-        # rnn_cell = rnn_cell_layernorm_modern.GRUCell_LayerNorm(size)
-        # rnn_cell = rnn_cell_layernorm_modern.HighwayRNNCell_LayerNorm(size)
-        # rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(
+        # cell = rnn.BasicLSTMCell(size, forget_bias=1.0, state_is_tuple=True)
+        # cell = rnn_cell_modern.HighwayRNNCell(size)
+        # cell = rnn_cell_modern.JZS1Cell(size)
+        # cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
+        # cell = rnn_cell_mulint_modern.GRUCell_MulInt(size)
+        # cell = rnn_cell_mulint_modern.BasicLSTMCell_MulInt(size)
+        # cell = rnn_cell_mulint_modern.HighwayRNNCell_MulInt(size)
+        # cell = rnn_cell_mulint_layernorm_modern.BasicLSTMCell_MulInt_LayerNorm(size)
+        # cell = rnn_cell_mulint_layernorm_modern.GRUCell_MulInt_LayerNorm(size)
+        # cell = rnn_cell_mulint_layernorm_modern.HighwayRNNCell_MulInt_LayerNorm(size)
+        # cell = rnn_cell_layernorm_modern.BasicLSTMCell_LayerNorm(size)
+        # cell = rnn_cell_layernorm_modern.GRUCell_LayerNorm(size)
+        # cell = rnn_cell_layernorm_modern.HighwayRNNCell_LayerNorm(size)
+        # cell = rnn_cell_modern.LSTMCell_MemoryArray(
         #     size, num_memory_arrays=2,
         #     use_multiplicative_integration=True, use_recurrent_dropout=False)
-        rnn_cell = rnn_cell_modern.MGUCell(
+        cell = rnn_cell_modern.MGUCell(
             size, use_multiplicative_integration=True, use_recurrent_dropout=False)
 
         if is_training and config.keep_prob < 1:
-            rnn_cell = rnn.DropoutWrapper(rnn_cell, output_keep_prob=config.keep_prob)
-        cell = rnn.MultiRNNCell([rnn_cell] * config.num_layers, state_is_tuple=True)
+            cell = rnn.DropoutWrapper(cell, output_keep_prob=config.keep_prob)
+        multi_cell = rnn.MultiRNNCell([cell] * config.num_layers, state_is_tuple=True)
 
-        self._initial_state = cell.zero_state(batch_size, tf.float32)
+        self._initial_state = multi_cell.zero_state(batch_size, tf.float32)
 
         with tf.device("/cpu:0"):
             embedding = tf.get_variable("embedding", [vocab_size, size])
@@ -133,14 +130,14 @@ class PTBModel(object):
         # from tensorflow.models.rnn import rnn
         # inputs = [tf.squeeze(input_, [1])
         #           for input_ in tf.split(1, num_steps, inputs)]
-        # outputs, state = rnn.rnn(cell, inputs, initial_state=self._initial_state)
+        # outputs, state = rnn.rnn(multi_cell, inputs, initial_state=self._initial_state)
         outputs = []
         state = self._initial_state
         with tf.variable_scope("RNN"):
             for time_step in range(num_steps):
                 if time_step > 0:
                     tf.get_variable_scope().reuse_variables()
-                (cell_output, state) = cell(inputs[time_step], state)
+                (cell_output, state) = multi_cell(inputs[time_step], state)
                 outputs.append(cell_output)
 
         output = tf.reshape(tf.concat(axis=1, values=outputs), [-1, size])
@@ -167,7 +164,7 @@ class PTBModel(object):
         self._train_op = optimizer.apply_gradients(zip(grads, tvars))
 
     def assign_lr(self, session, lr_value):
-        session.run(tf.assign(self.lr, lr_value))
+        session.run(fetches=tf.assign(self.lr, lr_value))
 
     @property
     def input_data(self):
@@ -262,23 +259,24 @@ class TestConfig(object):
     vocab_size = 10000
 
 
-def run_epoch(session, m, data, eval_op, verbose=False):
+def run_epoch(session, model, data, eval_op, verbose=False):
     '''Runs the model on the given data.'''
-    epoch_size = ((len(data) // m.batch_size) - 1) // m.num_steps
+    epoch_size = ((len(data) // model.batch_size) - 1) // model.num_steps
     start_time = time.time()
     costs = 0.0
     iters = 0
-    state = session.run(m.initial_state)
-    for step, (x, y) in enumerate(reader.ptb_producer(data, m.batch_size, m.num_steps)):
-        cost, state, _ = session.run([m.cost, m.final_state, eval_op],
-                                     {m.input_data: x, m.targets: y, m.initial_state: state})
+    state = session.run(fetches=model.initial_state)
+    for step, (x, y) in enumerate(reader.ptb_producer(data, model.batch_size, model.num_steps)):
+        cost, state, _ = session.run(
+            fetches=[model.cost, model.final_state, eval_op],
+            feed_dict={model.input_data: x, model.targets: y, model.initial_state: state})
         costs += cost
-        iters += m.num_steps
+        iters += model.num_steps
 
         if verbose and step % (epoch_size // 10) == 10:
             print("%.3f perplexity: %.3f speed: %.0f wps" %
                   (step * 1.0 / epoch_size, np.exp(costs / iters),
-                   iters * m.batch_size / (time.time() - start_time)))
+                   iters * model.batch_size / (time.time() - start_time)))
 
     return np.exp(costs / iters)
 
@@ -311,27 +309,27 @@ def main(_):
     with tf.Graph().as_default(), tf.Session() as session:
         initializer = tf.random_uniform_initializer(-config.init_scale, config.init_scale)
         with tf.variable_scope("model", reuse=None, initializer=initializer):
-            m = PTBModel(is_training=True, config=config)
+            model = PTBModel(is_training=True, config=config)
         with tf.variable_scope("model", reuse=True, initializer=initializer):
-            mvalid = PTBModel(is_training=False, config=config)
-            mtest = PTBModel(is_training=False, config=eval_config)
+            model_valid = PTBModel(is_training=False, config=config)
+            model_test = PTBModel(is_training=False, config=eval_config)
 
         tf.global_variables_initializer().run()
 
         for i in range(config.max_max_epoch):
             lr_decay = config.lr_decay ** max(i - config.max_epoch, 0.0)
-            m.assign_lr(session, config.learning_rate * lr_decay)
+            model.assign_lr(session, config.learning_rate * lr_decay)
 
-            print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(m.lr)))
-            train_perplexity = run_epoch(session, m, train_data, m.train_op, verbose=True)
+            print("Epoch: %d Learning rate: %.3f" % (i + 1, session.run(fetches=model.lr)))
+            train_perplexity = run_epoch(session, model, train_data, model.train_op, verbose=True)
             print("Epoch: %d Train Perplexity: %.3f" %
                   (i + 1, train_perplexity))
             valid_perplexity = run_epoch(
-                session, mvalid, valid_data, tf.no_op())
+                session, model_valid, valid_data, tf.no_op())
             print("Epoch: %d Valid Perplexity: %.3f" %
                   (i + 1, valid_perplexity))
 
-        test_perplexity = run_epoch(session, mtest, test_data, tf.no_op())
+        test_perplexity = run_epoch(session, model_test, test_data, tf.no_op())
         print("Test Perplexity: %.3f" % test_perplexity)
 
 

@@ -57,16 +57,11 @@ from __future__ import division
 from __future__ import print_function
 
 import time
-import os
 
 import numpy as np
 import tensorflow as tf
 
 from tensorflow.models.rnn.ptb import reader
-import rnn_cell_modern
-import rnn_cell_mulint_modern
-import rnn_cell_mulint_layernorm_modern
-import rnn_cell_layernorm_modern
 
 flags = tf.flags
 logging = tf.logging
@@ -74,7 +69,7 @@ logging = tf.logging
 flags.DEFINE_string(
     "model", "small",
     "A type of model. Possible options are: small, medium, large.")
-flags.DEFINE_string("data_path", os.path.expanduser('~') + '/ptb', "data_path")
+flags.DEFINE_string("data_path", None, "data_path")
 
 FLAGS = flags.FLAGS
 
@@ -91,27 +86,14 @@ class PTBModel(object):
     self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
     self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
-    # rnn_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=1.0, state_is_tuple=True)
-    # rnn_cell = rnn_cell_modern.HighwayRNNCell(size)
-    # rnn_cell = rnn_cell_modern.JZS1Cell(size)
-    # rnn_cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
-    # rnn_cell = rnn_cell_mulint_modern.GRUCell_MulInt(size)
-    # rnn_cell = rnn_cell_mulint_modern.BasicLSTMCell_MulInt(size)
-    # rnn_cell = rnn_cell_mulint_modern.HighwayRNNCell_MulInt(size)
-    # rnn_cell = rnn_cell_mulint_layernorm_modern.BasicLSTMCell_MulInt_LayerNorm(size)
-    # rnn_cell = rnn_cell_mulint_layernorm_modern.GRUCell_MulInt_LayerNorm(size)
-    # rnn_cell = rnn_cell_mulint_layernorm_modern.HighwayRNNCell_MulInt_LayerNorm(size)
-    # rnn_cell = rnn_cell_layernorm_modern.BasicLSTMCell_LayerNorm(size)
-    # rnn_cell = rnn_cell_layernorm_modern.GRUCell_LayerNorm(size)
-    # rnn_cell = rnn_cell_layernorm_modern.HighwayRNNCell_LayerNorm(size)
-    # rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(size, num_memory_arrays = 2, use_multiplicative_integration = True, use_recurrent_dropout = False)
-    rnn_cell = rnn_cell_modern.MGUCell(
-        size, use_multiplicative_integration=True, use_recurrent_dropout=False)
-
+    # Slightly better results can be obtained with forget gate biases
+    # initialized to 1 but the hyperparameters of the model would need to be
+    # different than reported in the paper.
+    lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(size, forget_bias=0.0)
     if is_training and config.keep_prob < 1:
-      rnn_cell = tf.nn.rnn_cell.DropoutWrapper(
-          rnn_cell, output_keep_prob=config.keep_prob)
-    cell = tf.nn.rnn_cell.MultiRNNCell([rnn_cell] * config.num_layers, state_is_tuple=True)
+      lstm_cell = tf.nn.rnn_cell.DropoutWrapper(
+          lstm_cell, output_keep_prob=config.keep_prob)
+    cell = tf.nn.rnn_cell.MultiRNNCell([lstm_cell] * config.num_layers)
 
     self._initial_state = cell.zero_state(batch_size, tf.float32)
 
@@ -136,13 +118,12 @@ class PTBModel(object):
     state = self._initial_state
     with tf.variable_scope("RNN"):
       for time_step in range(num_steps):
-        if time_step > 0:
-          tf.get_variable_scope().reuse_variables()
-        (cell_output, state) = cell(inputs[time_step], state)
+        if time_step > 0: tf.get_variable_scope().reuse_variables()
+        (cell_output, state) = cell(inputs[:, time_step, :], state)
         outputs.append(cell_output)
 
     output = tf.reshape(tf.concat(1, outputs), [-1, size])
-    softmax_w = tf.transpose(embedding)  # weight tying
+    softmax_w = tf.get_variable("softmax_w", [size, vocab_size])
     softmax_b = tf.get_variable("softmax_b", [vocab_size])
     logits = tf.matmul(output, softmax_w) + softmax_b
     loss = tf.nn.seq2seq.sequence_loss_by_example(
@@ -159,9 +140,7 @@ class PTBModel(object):
     tvars = tf.trainable_variables()
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                       config.max_grad_norm)
-    # optimizer = tf.train.GradientDescentOptimizer(self.lr)
-    optimizer = tf.train.AdamOptimizer(self.lr)
-
+    optimizer = tf.train.GradientDescentOptimizer(self.lr)
     self._train_op = optimizer.apply_gradients(zip(grads, tvars))
 
   def assign_lr(self, session, lr_value):
@@ -199,7 +178,7 @@ class PTBModel(object):
 class SmallConfig(object):
   """Small config."""
   init_scale = 0.1
-  learning_rate = 0.0005
+  learning_rate = 1.0
   max_grad_norm = 5
   num_layers = 2
   num_steps = 20
@@ -215,7 +194,7 @@ class SmallConfig(object):
 class MediumConfig(object):
   """Medium config."""
   init_scale = 0.05
-  learning_rate = 0.0005
+  learning_rate = 1.0
   max_grad_norm = 5
   num_layers = 2
   num_steps = 35
@@ -231,7 +210,7 @@ class MediumConfig(object):
 class LargeConfig(object):
   """Large config."""
   init_scale = 0.04
-  learning_rate = 0.0005
+  learning_rate = 1.0
   max_grad_norm = 10
   num_layers = 2
   num_steps = 35
@@ -247,7 +226,7 @@ class LargeConfig(object):
 class TestConfig(object):
   """Tiny config, for testing."""
   init_scale = 0.1
-  learning_rate = 0.0005
+  learning_rate = 1.0
   max_grad_norm = 1
   num_layers = 1
   num_steps = 2
@@ -266,7 +245,7 @@ def run_epoch(session, m, data, eval_op, verbose=False):
   start_time = time.time()
   costs = 0.0
   iters = 0
-  state = session.run(m.initial_state)
+  state = m.initial_state.eval()
   for step, (x, y) in enumerate(reader.ptb_iterator(data, m.batch_size,
                                                     m.num_steps)):
     cost, state, _ = session.run([m.cost, m.final_state, eval_op],
