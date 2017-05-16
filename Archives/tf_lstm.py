@@ -32,7 +32,7 @@ from tensorflow.contrib import rnn, layers
 
 NUM_EPOCHS = 5
 NUM_BITS = 10
-ITERATIONS_PER_EPOCH = 100
+NUM_ITER = 100
 TINY = np.finfo(np.float32).eps  # 1e-6                         # pylint: disable=no-member
 BATCH_SIZE = 16
 
@@ -42,6 +42,13 @@ OUTPUT_SIZE = 1         # 1 bit per timestep
 LEARNING_RATE = 0.01
 
 USE_LSTM = True
+
+SEED = 2
+
+
+random.seed(SEED)
+# np.random.seed(SEED)
+tf.set_random_seed(SEED)
 
 ##########################################################################
 ##                           DATASET GENERATION                               ##
@@ -92,11 +99,11 @@ def generate_batch(num_bits, batch_size):
     x = np.empty((num_bits, batch_size, 2))
     y = np.empty((num_bits, batch_size, 1))
 
-    for i in range(batch_size):
+    for inst in range(batch_size):
         num_a, num_b, res = generate_example(num_bits)
-        x[:, i, 0] = num_a
-        x[:, i, 1] = num_b
-        y[:, i, 0] = res
+        x[:, inst, 0] = num_a
+        x[:, inst, 1] = num_b
+        y[:, inst, 0] = res
 
     return x, y
 
@@ -106,8 +113,8 @@ def generate_batch(num_bits, batch_size):
 ##########################################################################
 
 def build_graph():
-    inputs = tf.placeholder(tf.float32, (None, None, INPUT_SIZE))  # (time, batch, in)
-    outputs = tf.placeholder(tf.float32, (None, None, OUTPUT_SIZE))  # (time, batch, out)
+    inputs = tf.placeholder(tf.float32, shape=(None, None, INPUT_SIZE))  # (time, batch, in)
+    labels = tf.placeholder(tf.float32, shape=(None, None, OUTPUT_SIZE))  # (time, batch, out)
 
     # Here cell can be any function you want, provided it has two attributes:
     #     - cell.zero_state(batch_size, dtype)- tensor which is an initial value
@@ -131,7 +138,7 @@ def build_graph():
     # to do for LSTM's tuple state, but can be achieved by creating two vector
     # Variables, which are then tiled along batch dimension and grouped into tuple.
     batch_size = tf.shape(inputs)[1]
-    initial_state = cell.zero_state(batch_size, tf.float32)
+    initial_state = cell.zero_state(batch_size=batch_size, dtype=tf.float32)
 
     # Given inputs (time, batch, input_size) outputs a tuple
     #  - outputs: (time, batch, output_size)  [do not mistake with OUTPUT_SIZE]
@@ -144,25 +151,36 @@ def build_graph():
 
 
     def final_projection(x):
-        return layers.linear(x, num_outputs=OUTPUT_SIZE, activation_fn=tf.nn.sigmoid)
+        return layers.fully_connected(x, num_outputs=OUTPUT_SIZE, activation_fn=tf.nn.sigmoid)
 
 
     # apply projection to every timestep.
-    predicted_outputs = tf.map_fn(final_projection, rnn_outputs)
+    prediction = tf.map_fn(fn=final_projection, elems=rnn_outputs)
+
+    labels_sqz = tf.transpose(tf.squeeze(labels[:, :, 0]))
+    predic_sqz = tf.transpose(tf.squeeze(prediction[:, :, 0]))
 
     # compute elementwise cross entropy.
-    loss = -(outputs * tf.log(predicted_outputs + TINY) +
-             (1.0 - outputs) * tf.log(1.0 - predicted_outputs + TINY))
-    loss = tf.reduce_mean(loss)
+    loss_tsr = -(labels_sqz * tf.log(predic_sqz + TINY) +
+                 (1.0 - labels_sqz) * tf.log(1.0 - predic_sqz + TINY))
+
+    # loss_tsr = tf.nn.sigmoid_cross_entropy_with_logits(labels=labels_sqz, logits=predic_sqz,
+    #                                                    name='loss')
+    # loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels, logits=prediction,
+    #                                                       name='loss')
+    # loss_tsr = tf.nn.softmax_cross_entropy_with_logits(labels=labels_sqz, logits=predic_sqz,
+    #                                                    name='loss')
+
+    loss = tf.reduce_mean(loss_tsr)
 
     # optimize
-    train_fn = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
+    optimizer = tf.train.AdamOptimizer(learning_rate=LEARNING_RATE).minimize(loss)
 
     # assuming that absolute difference between output and correct answer is 0.5
     # or less we can round it to the correct output.
-    accuracy = tf.reduce_mean(tf.cast(tf.abs(outputs - predicted_outputs) < 0.5, tf.float32))
+    accuracy = tf.reduce_mean(tf.cast(tf.abs(labels - prediction) < 0.5, tf.float32))
 
-    return (loss, train_fn, inputs, outputs, accuracy, predicted_outputs)
+    return (loss, optimizer, inputs, labels, accuracy, prediction, labels_sqz, predic_sqz, loss_tsr)
 
 
 ##########################################################################
@@ -170,9 +188,10 @@ def build_graph():
 ##########################################################################
 
 def run_training():
-    valid_x, valid_y = generate_batch(num_bits=NUM_BITS, batch_size=100)
+    valid_x, valid_y = generate_batch(num_bits=NUM_BITS, batch_size=BATCH_SIZE)
 
-    loss, train_fn, inputs, outputs, accuracy, predicted_outputs = build_graph()
+    (loss, optimizer, inputs, labels, accuracy, prediction, labels_sqz, predic_sqz, loss_tsr
+    ) = build_graph()
 
     session = tf.Session()
     # For some reason it is our job to do this:
@@ -180,19 +199,26 @@ def run_training():
 
     for epoch in range(NUM_EPOCHS):
         epoch_error = 0
-        for _ in range(ITERATIONS_PER_EPOCH):
-            # here train_fn is what triggers backprop. loss and accuracy on their
+        for _ in range(NUM_ITER):
+            # here optimizer is what triggers backprop. loss and accuracy on their
             # own do not trigger the backprop.
             x, y = generate_batch(num_bits=NUM_BITS, batch_size=BATCH_SIZE)
-            epoch_error += session.run(fetches=[loss, train_fn],
-                                       feed_dict={inputs: x, outputs: y})[0]
+            epoch_error += session.run(fetches=[loss, optimizer],
+                                       feed_dict={inputs: x, labels: y})[0]
 
-        epoch_error /= ITERATIONS_PER_EPOCH
-        valid_accuracy, predic = session.run(fetches=[accuracy, predicted_outputs],
-                                             feed_dict={inputs: valid_x, outputs: valid_y})
+        epoch_error /= NUM_ITER
+        valid_accuracy, predic, labels_arr, predic_arr, loss_arr = session.run(
+            fetches=[accuracy, prediction, labels_sqz, predic_sqz, loss_tsr],
+            feed_dict={inputs: valid_x, labels: valid_y})
 
         print("Epoch {} - loss: {:.2f} - valid accuracy: {:5.1f}% - predic: {}"#{:.6f}"
-              "".format(epoch, epoch_error, valid_accuracy * 100.0, predic.shape))
+              "".format(epoch, epoch_error, valid_accuracy * 100.0, loss_arr.shape))
+
+        np.set_printoptions(precision=2)
+        np.set_printoptions(suppress=True)  # Suppress the use of scientific notation
+        print(labels_arr)
+        print(predic_arr)
+        print(loss_arr)
 
 def main():
     run_training()
