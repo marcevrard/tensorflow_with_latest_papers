@@ -4,9 +4,6 @@ Module for constructing RNN Cells
 
 from __future__ import absolute_import, division, print_function
 
-import math
-
-import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import rnn
 
@@ -14,7 +11,7 @@ import highway_network_modern
 from linear_modern import linear
 from multiplicative_integration_modern import multiplicative_integration
 from normalization_ops_modern import layer_norm
-from six.moves import xrange
+# from six.moves import xrange
 
 # from multiplicative_integration import (multiplicative_integration,
 #                                         multiplicative_integration_for_multiple_inputs)
@@ -45,7 +42,7 @@ class HighwayRNNCell(RNNCell):
 
     def __call__(self, inputs, state, timestep=0, scope=None):
         current_state = state
-        for highway_layer in xrange(self.num_highway_layers):
+        for highway_layer in range(self.num_highway_layers):
             with tf.variable_scope('highway_factor_' + str(highway_layer)):
                 if self.use_inputs_on_each_layer or highway_layer == 0:
                     highway_factor = tf.tanh(
@@ -176,7 +173,7 @@ class MGUCell(RNNCell):
         return new_h, new_h
 
 
-class LSTMCell_MemoryArray(RNNCell):
+class LSTMCellMemoryArray(RNNCell):
     '''Implementation of Recurrent Memory Array Structures Kamil Rocki
     https://arxiv.org/abs/1607.03085
     Idea is to build more complex memory structures within one single layer
@@ -210,7 +207,8 @@ class LSTMCell_MemoryArray(RNNCell):
     def __call__(self, inputs, state, timestep=0, scope=None):
         with tf.variable_scope(scope or type(self).__name__):  # "BasicLSTMCell"
             # Parameters of gates are concatenated into one multiply for efficiency.
-            hidden_state_plus_c_list = tf.split(axis=1, num_or_size_splits=self.num_memory_arrays + 1, value=state)
+            hidden_state_plus_c_list = tf.split(
+                state, num_or_size_splits=self.num_memory_arrays+1, axis=1)
 
             h = hidden_state_plus_c_list[0]
             c_list = hidden_state_plus_c_list[1:]
@@ -230,11 +228,12 @@ class LSTMCell_MemoryArray(RNNCell):
 
             # i = input_gate, j = new_input, f = forget_gate, o = output_gate
             # -- comes in sets of fours
-            all_vars_list = tf.split(axis=1, num_or_size_splits=4 * self.num_memory_arrays, value=concat)
+            all_vars_list = tf.split(
+                concat, num_or_size_splits=4*self.num_memory_arrays, axis=1)
 
             ## memory array loop
             new_c_list, new_h_list = [], []
-            for array_counter in xrange(self.num_memory_arrays):
+            for array_counter in range(self.num_memory_arrays):
 
                 i = all_vars_list[0 + array_counter * 4]
                 j = all_vars_list[1 + array_counter * 4]
@@ -260,7 +259,7 @@ class LSTMCell_MemoryArray(RNNCell):
             ## sum all new_h components -- could instead do a mean -- but investigate that later
             new_h = tf.add_n(new_h_list)
 
-        return new_h, tf.concat(axis=1, values=[new_h] + new_c_list)  # purposely reversed
+        return new_h, tf.concat([new_h] + new_c_list, axis=1)  # purposely reversed
 
 
 class JZS1Cell(RNNCell):
@@ -429,7 +428,7 @@ class JZS3Cell(RNNCell):
                              # This makes it more mem efficient than LSTM
 
 
-class Delta_RNN(RNNCell):
+class DeltaRNN(RNNCell):
     '''From https://arxiv.org/pdf/1703.08864.pdf
     Implements a second order Delta RNN with inner and outer functions
     '''

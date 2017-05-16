@@ -102,7 +102,7 @@ class PTBModel(object):
         # cell = rnn_cell_layernorm_modern.BasicLSTMCell_LayerNorm(size)
         # cell = rnn_cell_layernorm_modern.GRUCell_LayerNorm(size)
         # cell = rnn_cell_layernorm_modern.HighwayRNNCell_LayerNorm(size)
-        # cell = rnn_cell_modern.LSTMCell_MemoryArray(
+        # cell = rnn_cell_modern.LSTMCellMemoryArray(
         #     size, num_memory_arrays=2,
         #     use_multiplicative_integration=True, use_recurrent_dropout=False)
         cell = rnn_cell_modern.MGUCell(

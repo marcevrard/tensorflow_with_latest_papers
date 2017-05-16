@@ -17,7 +17,7 @@ Currently Implemented Papers:
 * GRU Mutants
 * Weight Tying
 
-More Papers to come as they are published. If you have any requests, please use the issues section. 
+More Papers to come as they are published. If you have any requests, please use the issues section.
 
 ###Contact Information:
 
@@ -48,7 +48,7 @@ Light yet powerful RNN that beats LSTM on multiple tests. Implemented second ord
 ```python
 import rnn_cell_modern
 
-rnn_cell = rnn_cell_modern.Delta_RNN(inputs, num_units = 1024)
+rnn_cell = rnn_cell_modern.DeltaRNN(inputs, num_units = 1024)
 
 # To Call
 output, new_state = rnn_cell(inputs, state)
@@ -69,11 +69,11 @@ output = highway_networks_modern.highway(inputs, num_layers = 3)
 
 
 
-### Recurrent Highway Networks 
+### Recurrent Highway Networks
 
 http://arxiv.org/abs/1607.03474
 
-Allows multiple stacking of layers within one cell to increase depth per timestep. 
+Allows multiple stacking of layers within one cell to increase depth per timestep.
 
 ```python
 import rnn_cell_modern
@@ -106,7 +106,7 @@ cell = rnn_cell_mulint_modern.HighwayRNNCell_MulInt(num_units, num_highway_layer
 
 http://arxiv.org/pdf/1603.05118v1.pdf
 
-Implement recurrent dropout within multiplicative integration rnn cells. Will allow rnn cell's memory to be more versatile. 
+Implement recurrent dropout within multiplicative integration rnn cells. Will allow rnn cell's memory to be more versatile.
 
 ```python
 import rnn_cell_mulint_modern
@@ -130,7 +130,7 @@ http://arxiv.org/abs/1607.06450
 
 Layer normalization promises faster convergence and lower perplexities. With layer normalization you do not need to change any settings if you're training or testing.
 
-Note: It seems that the GRU implementation does not converge currently. I've found that it does converge if you only apply LN terms to the first two r and u matrices. 
+Note: It seems that the GRU implementation does not converge currently. I've found that it does converge if you only apply LN terms to the first two r and u matrices.
 
 ```python
 import rnn_cell_layernorm_modern
@@ -166,7 +166,7 @@ https://arxiv.org/abs/1607.03085
 
 Idea is to build more complex memory structures within one single layer rather than stacking multiple layers of RNNs.
 
-When using this type of cell, it is recommended to only use one single layer and then increase the number of memory cells. 
+When using this type of cell, it is recommended to only use one single layer and then increase the number of memory cells.
 
 Within this implementation you can also choose to use or not use:
 - multiplicative integration
@@ -178,7 +178,7 @@ I have found multiplicative integration to help and have not extensively tested 
 ```python
 import rnn_cell_modern
 
-rnn_cell = rnn_cell_modern.LSTMCell_MemoryArray(size, num_memory_arrays = 2, 
+rnn_cell = rnn_cell_modern.LSTMCellMemoryArray(size, num_memory_arrays = 2,
 	use_multiplicative_integration = True, use_recurrent_dropout = False, use_layer_normalization = False)
 ```
 
@@ -239,7 +239,7 @@ cell = rnn_cell_modern.JZS3Cell(num_units)
 "Using the Output Embedding to Improve Language Models" by Press & Wolf
 https://arxiv.org/abs/1608.05859
 
-Tying the input word embeding to the softmax matrix. Because of the similarities between the input embedding and the softmax matrix (AKA the output embedding), setting them to be equal improves preplexity while reducing the number of parameters in the model. 
+Tying the input word embeding to the softmax matrix. Because of the similarities between the input embedding and the softmax matrix (AKA the output embedding), setting them to be equal improves preplexity while reducing the number of parameters in the model.
 ```python
 softmax_w = tf.transpose(embedding)
 ```
