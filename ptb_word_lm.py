@@ -107,8 +107,9 @@ class PTBModel(object):
         self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
         self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
 
-        cell = rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
-                                 reuse=tf.get_variable_scope().reuse)
+        def lstm_cell():
+            return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
+                                     reuse=tf.get_variable_scope().reuse)
         # cell = rnn_cell_modern.HighwayRNNCell(size)
         # cell = rnn_cell_modern.JZS1Cell(size)
         # cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
@@ -127,10 +128,18 @@ class PTBModel(object):
         # cell = rnn_cell_modern.MGUCell(
         #     size, use_multiplicative_integration=True, use_recurrent_dropout=False)
 
+        attn_cell = lstm_cell
         if is_training and config.keep_prob < 1:
-            cell = rnn.DropoutWrapper(cell, output_keep_prob=config.keep_prob)
-        multi_cell = rnn.MultiRNNCell([cell for _ in range(config.num_layers)])
-        # multi_cell = rnn.MultiRNNCell([cell] * config.num_layers)
+            def attn_cell():
+                return tf.contrib.rnn.DropoutWrapper(lstm_cell(),
+                                                     output_keep_prob=config.keep_prob)
+        multi_cell = tf.contrib.rnn.MultiRNNCell([attn_cell() for _ in range(config.num_layers)],
+                                                 state_is_tuple=True)
+
+        # if is_training and config.keep_prob < 1:
+        #     cell = rnn.DropoutWrapper(cell, output_keep_prob=config.keep_prob)
+        # multi_cell = rnn.MultiRNNCell([cell for _ in range(config.num_layers)])
+        # # multi_cell = rnn.MultiRNNCell([cell] * config.num_layers)
 
         self._initial_state = multi_cell.zero_state(batch_size, dtype=tf.float32)
 
