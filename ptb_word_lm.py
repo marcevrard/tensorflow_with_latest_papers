@@ -66,11 +66,12 @@ To run:
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
 import time
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib import rnn, legacy_seq2seq, framework
+from tensorflow.contrib import framework, legacy_seq2seq, rnn
 
 import rnn_cell_layernorm_modern            # pylint: disable=unused-import
 import rnn_cell_modern                      # pylint: disable=unused-import
@@ -79,7 +80,7 @@ import rnn_cell_mulint_modern               # pylint: disable=unused-import
 
 from tf_ptb_model_util import reader
 
-
+# TODO: use argparse instead
 tf.flags.DEFINE_string(flag_name='model', default_value='small',
                        docstring="A type of model. Possible options are: small, medium, large.")
 tf.flags.DEFINE_string(flag_name='data_path', default_value=os.path.expanduser('~/ptb'),
@@ -113,7 +114,7 @@ class PTBModel(object):
         vocab_size = config.vocab_size
 
         def lstm_cell():
-            return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
+            return rnn.BasicLSTMCell(num_units=size, forget_bias=0.0,
                                      reuse=tf.get_variable_scope().reuse)
         # cell = rnn_cell_modern.HighwayRNNCell(size)
         # cell = rnn_cell_modern.JZS1Cell(size)
@@ -148,9 +149,9 @@ class PTBModel(object):
 
         self._initial_state = multi_cell.zero_state(batch_size, dtype=tf.float32)
 
-        with tf.device('/cpu:0'):
-            embedding = tf.get_variable('embedding', [vocab_size, size])
-            inputs = tf.nn.embedding_lookup(embedding, input_.input_data)
+        # with tf.device('/cpu:0'):
+        embedding = tf.get_variable('embedding', [vocab_size, size])
+        inputs = tf.nn.embedding_lookup(embedding, input_.input_data)
 
         if is_training and config.keep_prob < 1:
             inputs = tf.nn.dropout(inputs, config.keep_prob)
@@ -195,8 +196,8 @@ class PTBModel(object):
         tvars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                           clip_norm=config.max_grad_norm)
-        # optimizer = tf.train.GradientDescentOptimizer(self.lr)
-        optimizer = tf.train.AdamOptimizer(self._lr)
+        optimizer = tf.train.GradientDescentOptimizer(self._lr)
+        # optimizer = tf.train.AdamOptimizer(self._lr)
 
         self._train_op = optimizer.apply_gradients(
             zip(grads, tvars),
@@ -233,10 +234,10 @@ class PTBModel(object):
         return self._train_op
 
 
-class SmallConfig(object):
+class SmallConfig(object):  # TODO: move them in json files
     '''Small config.'''
     init_scale = 0.1
-    learning_rate = 0.0005
+    learning_rate = 1.0
     max_grad_norm = 5
     num_layers = 2
     num_steps = 20
@@ -326,7 +327,7 @@ def run_epoch(session, model, eval_op=None, verbose=False):
         iters += model.input.num_steps
 
         if verbose and step % (model.input.epoch_size // 10) == 10:
-            print("{:.3f} perplexity: {:.3f} speed: {:.0f} wps"
+            print("{:.3f} perplexity: {:7.3f} speed: {:.0f} wps"
                   "".format(step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
                             iters * model.input.batch_size / (time.time() - start_time)))
 
@@ -358,6 +359,8 @@ def main(_):
     eval_config = get_config()
     eval_config.batch_size = 1
     eval_config.num_steps = 1
+
+    print("Configuration: {}".format(FLAGS.model))
 
     with tf.Graph().as_default():
         initializer = tf.random_uniform_initializer(-config.init_scale,
@@ -405,4 +408,7 @@ def main(_):
 
 
 if __name__ == '__main__':
-    tf.app.run()
+    try:
+        tf.app.run()
+    except KeyboardInterrupt:
+        sys.exit("\nProgram interrupted by user.\n")

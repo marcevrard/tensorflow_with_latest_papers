@@ -68,6 +68,8 @@ import rnn_cell_mulint_modern
 import rnn_cell_mulint_layernorm_modern
 import rnn_cell_layernorm_modern
 
+# pylint: skip-file
+
 flags = tf.flags
 logging = tf.logging
 
