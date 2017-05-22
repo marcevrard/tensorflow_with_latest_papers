@@ -16,43 +16,51 @@
 # limitations under the License.
 # ==============================================================================
 
-'''Example / benchmark for building a PTB LSTM model.
+'''
+Example / benchmark for building a PTB LSTM model.
+==================================================
 
 Trains the model described in:
 (Zaremba, et. al.) Recurrent Neural Network Regularization
 http://arxiv.org/abs/1409.2329
 
 There are 3 supported model configurations:
-===========================================
-| config | epochs | train | valid  | test
-===========================================
-| small  | 13     | 37.99 | 121.39 | 115.91
-| medium | 39     | 48.45 |  86.16 |  82.07
-| large  | 55     | 37.87 |  82.62 |  78.29
+-------------------------------------------
+
+| config | epochs | train | valid  | test   |
+|:-------|:------:|------:|-------:|-------:|
+| small  | 13     | 37.99 | 121.39 | 115.91 |
+| medium | 39     | 48.45 |  86.16 |  82.07 |
+| large  | 55     | 37.87 |  82.62 |  78.29 |
+
 The exact results may vary depending on the random initialization.
 
 The hyperparameters used in the model:
-- init_scale - the initial scale of the weights
-- learning_rate - the initial value of the learning rate
-- max_grad_norm - the maximum permissible norm of the gradient
-- num_layers - the number of LSTM layers
-- num_steps - the number of unrolled steps of LSTM
-- hidden_size - the number of LSTM units
-- max_epoch - the number of epochs trained with the initial learning rate
-- max_max_epoch - the total number of epochs for training
-- keep_prob - the probability of keeping weights in the dropout layer
-- lr_decay - the decay of the learning rate for each epoch after 'max_epoch'
-- batch_size - the batch size
+--------------------------------------
+
+- `init_scale` - the initial scale of the weights
+- `learning_rate` - the initial value of the learning rate
+- `max_grad_norm` - the maximum permissible norm of the gradient
+- `num_layers` - the number of LSTM layers
+- `num_steps` - the number of unrolled steps of LSTM
+- `hidden_size` - the number of LSTM units
+- `max_epoch` - the number of epochs trained with the initial learning rate
+- `max_max_epoch` - the total number of epochs for training
+- `keep_prob` - the probability of keeping weights in the dropout layer
+- `lr_decay` - the decay of the learning rate for each epoch after 'max_epoch'
+- `batch_size` - the batch size
 
 The data required for this example is in the data/ dir of the
 PTB dataset from Tomas Mikolov's webpage:
+-----------------------------------------
 
-$ wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
-$ tar xvf simple-examples.tgz
+    $ wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
+    $ tar xvf simple-examples.tgz
 
 To run:
+-------
 
-$ python ptb_word_lm.py --data_path=simple-examples/data/
+    $ ./ptb_word_lm.py --data_path=simple-examples/data/
 '''
 
 from __future__ import absolute_import, division, print_function
@@ -104,9 +112,6 @@ class PTBModel(object):
         size = config.hidden_size
         vocab_size = config.vocab_size
 
-        self._input_data = tf.placeholder(tf.int32, [batch_size, num_steps])
-        self._targets = tf.placeholder(tf.int32, [batch_size, num_steps])
-
         def lstm_cell():
             return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
                                      reuse=tf.get_variable_scope().reuse)
@@ -145,7 +150,7 @@ class PTBModel(object):
 
         with tf.device('/cpu:0'):
             embedding = tf.get_variable('embedding', [vocab_size, size])
-            inputs = tf.nn.embedding_lookup(embedding, self._input_data)
+            inputs = tf.nn.embedding_lookup(embedding, input_.input_data)
 
         if is_training and config.keep_prob < 1:
             inputs = tf.nn.dropout(inputs, config.keep_prob)
@@ -308,7 +313,7 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
     for step in range(model.input.epoch_size):
         feed_dict = {}
-        print(model.initial_state)  # ddebug
+        # print(model.initial_state)  # ddebug
         for i, (c, h) in enumerate(model.initial_state):
             feed_dict[c] = state[i].c
             feed_dict[h] = state[i].h
