@@ -25,6 +25,9 @@ import os
 import tensorflow as tf
 
 
+# pylint: disable=bad-indentation
+
+
 def _read_words(filename):
   with tf.gfile.GFile(filename, "r") as f:
     return f.read().replace("\n", "<eos>").split()

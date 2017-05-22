@@ -64,6 +64,8 @@ import tensorflow as tf
 
 import reader
 
+# pylint: skip-file
+
 flags = tf.flags
 logging = tf.logging
 
