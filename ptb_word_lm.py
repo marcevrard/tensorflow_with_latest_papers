@@ -63,7 +63,7 @@ To run:
     $ ./ptb_word_lm.py --data_path=simple-examples/data/
 '''
 
-from __future__ import absolute_import, division, print_function
+# from __future__ import absolute_import, division, print_function
 
 import os
 import sys
@@ -77,8 +77,10 @@ import rnn_cell_layernorm_modern            # pylint: disable=unused-import
 import rnn_cell_modern                      # pylint: disable=unused-import
 import rnn_cell_mulint_layernorm_modern     # pylint: disable=unused-import
 import rnn_cell_mulint_modern               # pylint: disable=unused-import
-
 from tf_ptb_model_util import reader
+
+
+DATA_TYPE = tf.float32
 
 # TODO: use argparse instead
 tf.flags.DEFINE_string(flag_name='model', default_value='small',
@@ -137,24 +139,21 @@ class PTBModel(object):
         attn_cell = lstm_cell
         if is_training and config.keep_prob < 1:
             def attn_cell():
-                return tf.contrib.rnn.DropoutWrapper(lstm_cell(),
-                                                     output_keep_prob=config.keep_prob)
-        multi_cell = tf.contrib.rnn.MultiRNNCell([attn_cell() for _ in range(config.num_layers)],
-                                                 state_is_tuple=True)
+                return rnn.DropoutWrapper(lstm_cell(), output_keep_prob=config.keep_prob)
+        multi_cell = rnn.MultiRNNCell([attn_cell() for _ in range(config.num_layers)],
+                                      state_is_tuple=True)
 
-        # if is_training and config.keep_prob < 1:
-        #     cell = rnn.DropoutWrapper(cell, output_keep_prob=config.keep_prob)
         # multi_cell = rnn.MultiRNNCell([cell for _ in range(config.num_layers)])
         # # multi_cell = rnn.MultiRNNCell([cell] * config.num_layers)
 
-        self._initial_state = multi_cell.zero_state(batch_size, dtype=tf.float32)
+        self._initial_state = multi_cell.zero_state(batch_size, dtype=DATA_TYPE)
 
         # with tf.device('/cpu:0'):
-        embedding = tf.get_variable('embedding', [vocab_size, size])
-        inputs = tf.nn.embedding_lookup(embedding, input_.input_data)
+        embedding = tf.get_variable('embedding', shape=[vocab_size, size])
+        inputs = tf.nn.embedding_lookup(embedding, ids=input_.input_data)
 
         if is_training and config.keep_prob < 1:
-            inputs = tf.nn.dropout(inputs, config.keep_prob)
+            inputs = tf.nn.dropout(inputs, keep_prob=config.keep_prob)
 
         # Simplified version of tensorflow.models.rnn.rnn.py's rnn().
         # This builds an unrolled LSTM for tutorial purposes only.
@@ -178,13 +177,13 @@ class PTBModel(object):
         output = tf.reshape(tf.stack(values=outputs, axis=1),
                             shape=[-1, size])
         # softmax_w = tf.transpose(embedding)  # weight tying
-        softmax_w = tf.get_variable('softmax_w', shape=[size, vocab_size])
-        softmax_b = tf.get_variable('softmax_b', shape=[vocab_size])
+        softmax_w = tf.get_variable('softmax_w', shape=[size, vocab_size], dtype=DATA_TYPE)
+        softmax_b = tf.get_variable('softmax_b', shape=[vocab_size], dtype=DATA_TYPE)
         logits = tf.matmul(output, softmax_w) + softmax_b
         loss = legacy_seq2seq.sequence_loss_by_example(
             logits=[logits],
             targets=[tf.reshape(input_.targets, shape=[-1])],
-            weights=[tf.ones(shape=[batch_size * num_steps])])
+            weights=[tf.ones(shape=[batch_size * num_steps], dtype=DATA_TYPE)])
 
         self._cost = cost = tf.reduce_sum(loss) / batch_size
         self._final_state = state
@@ -192,22 +191,22 @@ class PTBModel(object):
         if not is_training:
             return
 
-        self._lr = tf.Variable(initial_value=0.0, trainable=False)    # TODO: try None as init val?
+        self._lr = tf.Variable(initial_value=0.0, trainable=False)  # TODO: try None as init val?
         tvars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
                                           clip_norm=config.max_grad_norm)
-        optimizer = tf.train.GradientDescentOptimizer(self._lr)
+        optimizer = tf.train.GradientDescentOptimizer(self._lr)     # TODO: try momentum
         # optimizer = tf.train.AdamOptimizer(self._lr)
 
         self._train_op = optimizer.apply_gradients(
             zip(grads, tvars),
             global_step=framework.get_or_create_global_step())
 
-        self._new_lr = tf.placeholder(tf.float32, shape=[], name='new_learning_rate')
-        self._lr_update = tf.assign(self._lr, self._new_lr)
+        self._new_lr = tf.placeholder(DATA_TYPE, shape=[], name='new_learning_rate')
+        self._lr_update = tf.assign(ref=self._lr, value=self._new_lr)
 
     def assign_lr(self, session, lr_value):
-        session.run(self._lr_update, feed_dict={self._new_lr: lr_value})
+        session.run(fetches=self._lr_update, feed_dict={self._new_lr: lr_value})
 
     @property
     def input(self):
@@ -253,7 +252,7 @@ class SmallConfig(object):  # TODO: move them in json files
 class MediumConfig(object):
     '''Medium config.'''
     init_scale = 0.05
-    learning_rate = 0.0005
+    learning_rate = 1.0
     max_grad_norm = 5
     num_layers = 2
     num_steps = 35
@@ -269,7 +268,7 @@ class MediumConfig(object):
 class LargeConfig(object):
     '''Large config.'''
     init_scale = 0.04
-    learning_rate = 0.0005
+    learning_rate = 1.0
     max_grad_norm = 10
     num_layers = 2
     num_steps = 35
@@ -285,7 +284,7 @@ class LargeConfig(object):
 class TestConfig(object):
     '''Tiny config, for testing.'''
     init_scale = 0.1
-    learning_rate = 0.0005
+    learning_rate = 1.0
     max_grad_norm = 1
     num_layers = 1
     num_steps = 2
@@ -314,7 +313,6 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
     for step in range(model.input.epoch_size):
         feed_dict = {}
-        # print(model.initial_state)  # ddebug
         for i, (c, h) in enumerate(model.initial_state):
             feed_dict[c] = state[i].c
             feed_dict[h] = state[i].h
@@ -363,8 +361,8 @@ def main(_):
     print("Configuration: {}".format(FLAGS.model))
 
     with tf.Graph().as_default():
-        initializer = tf.random_uniform_initializer(-config.init_scale,
-                                                    config.init_scale)
+        initializer = tf.random_uniform_initializer(minval=-config.init_scale,
+                                                    maxval=config.init_scale)
 
         with tf.name_scope("Train"):
             train_input = PTBInput(config=config, data=train_data, name="TrainInput")
@@ -389,7 +387,7 @@ def main(_):
 
             for i in range(config.max_max_epoch):
                 lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
-                model.assign_lr(session, config.learning_rate * lr_decay)
+                model.assign_lr(session, lr_value=config.learning_rate * lr_decay)
 
                 print("Epoch: %d Learning rate: %.4f" % (i + 1, session.run(model.lr)))
                 train_perplexity = run_epoch(session, model, eval_op=model.train_op,
