@@ -385,6 +385,7 @@ def main(_):
         sv = tf.train.Supervisor(logdir=FLAGS.save_path)
         with sv.managed_session() as session:
 
+            # i = 0   # To avoid warning after loop
             for i in range(config.max_max_epoch):
                 lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
                 model.assign_lr(session, lr_value=config.learning_rate * lr_decay)
@@ -401,8 +402,9 @@ def main(_):
             print("Test Perplexity: %.3f" % test_perplexity)
 
             if FLAGS.save_path:
-                print("Saving model to %s." % FLAGS.save_path)
-                sv.saver.save(session, FLAGS.save_path, global_step=sv.global_step)
+                model_fpath = os.path.join(FLAGS.save_path, "model-epoch{}".format(i))
+                print("Saving model to {}".format(model_fpath))
+                sv.saver.save(session, model_fpath, global_step=sv.global_step)
 
 
 if __name__ == '__main__':
