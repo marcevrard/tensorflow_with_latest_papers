@@ -85,15 +85,15 @@ DATA_TYPE = tf.float32
 # TODO: use argparse instead
 tf.flags.DEFINE_string(flag_name='model', default_value='small',
                        docstring="A type of model. Possible options are: small, medium, large.")
-tf.flags.DEFINE_string(flag_name='data_path', default_value=os.path.expanduser('~/ptb'),
+tf.flags.DEFINE_string(flag_name='data_path', default_value='./simple-examples/data',
                        docstring="Data path")
-tf.flags.DEFINE_string(flag_name='save_path', default_value=None,
+tf.flags.DEFINE_string(flag_name='save_path', default_value='./models',
                        docstring="Model output directory.")
 
 FLAGS = tf.flags.FLAGS
 
 
-class PTBInput(object):  # TODO: change to ntpl
+class PTBInput:  # TODO: change to ntpl
     '''The input data.'''
 
     def __init__(self, config, data, name=None):
@@ -104,7 +104,7 @@ class PTBInput(object):  # TODO: change to ntpl
             data, batch_size, num_steps, name=name)
 
 
-class PTBModel(object):
+class PTBModel:
     '''The PTB model.'''
 
     def __init__(self, is_training, config, input_):
@@ -233,7 +233,7 @@ class PTBModel(object):
         return self._train_op
 
 
-class SmallConfig(object):  # TODO: move them in json files
+class SmallConfig:  # TODO: move them in json files
     '''Small config.'''
     init_scale = 0.1
     learning_rate = 1.0
@@ -243,54 +243,6 @@ class SmallConfig(object):  # TODO: move them in json files
     hidden_size = 200
     max_epoch = 4
     max_max_epoch = 13
-    keep_prob = 1.0
-    lr_decay = 0.5
-    batch_size = 20
-    vocab_size = 10000
-
-
-class MediumConfig(object):
-    '''Medium config.'''
-    init_scale = 0.05
-    learning_rate = 1.0
-    max_grad_norm = 5
-    num_layers = 2
-    num_steps = 35
-    hidden_size = 650
-    max_epoch = 6
-    max_max_epoch = 39
-    keep_prob = 0.5
-    lr_decay = 0.8
-    batch_size = 20
-    vocab_size = 10000
-
-
-class LargeConfig(object):
-    '''Large config.'''
-    init_scale = 0.04
-    learning_rate = 1.0
-    max_grad_norm = 10
-    num_layers = 2
-    num_steps = 35
-    hidden_size = 1500
-    max_epoch = 14
-    max_max_epoch = 55
-    keep_prob = 0.35
-    lr_decay = 1 / 1.15
-    batch_size = 20
-    vocab_size = 10000
-
-
-class TestConfig(object):
-    '''Tiny config, for testing.'''
-    init_scale = 0.1
-    learning_rate = 1.0
-    max_grad_norm = 1
-    num_layers = 1
-    num_steps = 2
-    hidden_size = 2
-    max_epoch = 1
-    max_max_epoch = 1
     keep_prob = 1.0
     lr_decay = 0.5
     batch_size = 20
@@ -325,7 +277,7 @@ def run_epoch(session, model, eval_op=None, verbose=False):
         iters += model.input.num_steps
 
         if verbose and step % (model.input.epoch_size // 10) == 10:
-            print("{:.3f} perplexity: {:7.3f} speed: {:.0f} wps"
+            print("{:.1f} perplexity: {:7.2f} speed: {:.0f} wps"
                   "".format(step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
                             iters * model.input.batch_size / (time.time() - start_time)))
 
@@ -335,12 +287,12 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 def get_config():
     if FLAGS.model == 'small':
         return SmallConfig()
-    elif FLAGS.model == 'medium':
-        return MediumConfig()
-    elif FLAGS.model == 'large':
-        return LargeConfig()
-    elif FLAGS.model == 'test':
-        return TestConfig()
+    # elif FLAGS.model == 'medium':
+    #     return MediumConfig()
+    # elif FLAGS.model == 'large':
+    #     return LargeConfig()
+    # elif FLAGS.model == 'test':
+    #     return TestConfig()
     else:
         raise ValueError("Invalid model: %s", FLAGS.model)
 
@@ -385,26 +337,26 @@ def main(_):
         sv = tf.train.Supervisor(logdir=FLAGS.save_path)
         with sv.managed_session() as session:
 
-            # i = 0   # To avoid warning after loop
-            for i in range(config.max_max_epoch):
-                lr_decay = config.lr_decay ** max(i + 1 - config.max_epoch, 0.0)
+            # epoch = 0   # To avoid warning after loop block
+            for epoch in range(1, config.max_max_epoch + 1):
+                lr_decay = config.lr_decay ** max(epoch - config.max_epoch, 0.0)
                 model.assign_lr(session, lr_value=config.learning_rate * lr_decay)
 
-                print("Epoch: %d Learning rate: %.4f" % (i + 1, session.run(model.lr)))
+                print("Epoch: {} Learning rate: {:.4f}".format(epoch, session.run(model.lr)))
                 train_perplexity = run_epoch(session, model, eval_op=model.train_op,
                                              verbose=True)
 
-                print("Epoch: %d Train Perplexity: %.3f" % (i + 1, train_perplexity))
+                print("Epoch: {} Train Perplexity: {:.2f}".format(epoch, train_perplexity))
                 valid_perplexity = run_epoch(session, model_valid)
-                print("Epoch: %d Valid Perplexity: %.3f" % (i + 1, valid_perplexity))
+                print("Epoch: {} Valid Perplexity: {:.2f}".format(epoch, valid_perplexity))
 
             test_perplexity = run_epoch(session, model_test)
-            print("Test Perplexity: %.3f" % test_perplexity)
+            print("Test Perplexity: {:.2f}".format(test_perplexity))
 
-            if FLAGS.save_path:
-                model_fpath = os.path.join(FLAGS.save_path, "model-epoch{}".format(i))
-                print("Saving model to {}".format(model_fpath))
-                sv.saver.save(session, model_fpath, global_step=sv.global_step)
+            # if FLAGS.save_path:
+            #     model_fpath = os.path.join(FLAGS.save_path, "model-epoch{}".format(epoch))
+            #     print("Saving model to {}".format(model_fpath))
+            #     sv.saver.save(session, model_fpath, global_step=sv.global_step)
 
 
 if __name__ == '__main__':
