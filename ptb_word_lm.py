@@ -44,10 +44,10 @@ The hyperparameters used in the model:
 - `num_layers` - the number of LSTM layers
 - `num_steps` - the number of unrolled steps of LSTM
 - `hidden_size` - the number of LSTM units
-- `max_epoch` - the number of epochs trained with the initial learning rate
-- `max_max_epoch` - the total number of epochs for training
+- `init_lr_max_epoch` - the number of epochs trained with the initial learning rate
+- `max_epoch` - the total number of epochs for training
 - `keep_prob` - the probability of keeping weights in the dropout layer
-- `lr_decay` - the decay of the learning rate for each epoch after 'max_epoch'
+- `lr_decay` - the decay of the learning rate for each epoch after 'init_lr_max_epoch'
 - `batch_size` - the batch size
 
 The data required for this example is in the data/ dir of the
@@ -65,6 +65,8 @@ To run:
 
 # from __future__ import absolute_import, division, print_function
 
+import argparse
+import logging
 import os
 import sys
 import time
@@ -77,20 +79,12 @@ import rnn_cell_layernorm_modern            # pylint: disable=unused-import
 import rnn_cell_modern                      # pylint: disable=unused-import
 import rnn_cell_mulint_layernorm_modern     # pylint: disable=unused-import
 import rnn_cell_mulint_modern               # pylint: disable=unused-import
+
+from print_tools import logging_handler
 from tf_ptb_model_util import reader
 
-
 DATA_TYPE = tf.float32
-
-# TODO: use argparse instead
-tf.flags.DEFINE_string(flag_name='model', default_value='small',
-                       docstring="A type of model. Possible options are: small, medium, large.")
-tf.flags.DEFINE_string(flag_name='data_path', default_value='./simple-examples/data',
-                       docstring="Data path")
-tf.flags.DEFINE_string(flag_name='save_path', default_value='./models',
-                       docstring="Model output directory.")
-
-FLAGS = tf.flags.FLAGS
+LOG_PATH = './logs'
 
 
 class PTBInput:  # TODO: change to ntpl
@@ -115,7 +109,7 @@ class PTBModel:
         size = config.hidden_size
         vocab_size = config.vocab_size
 
-        def lstm_cell():
+        def cell():
             return rnn.BasicLSTMCell(num_units=size, forget_bias=0.0,
                                      reuse=tf.get_variable_scope().reuse)
         # cell = rnn_cell_modern.HighwayRNNCell(size)
@@ -136,12 +130,13 @@ class PTBModel:
         # cell = rnn_cell_modern.MGUCell(
         #     size, use_multiplicative_integration=True, use_recurrent_dropout=False)
 
-        attn_cell = lstm_cell
+        op_cell = cell
         if is_training and config.keep_prob < 1:
-            def attn_cell():
-                return rnn.DropoutWrapper(lstm_cell(), output_keep_prob=config.keep_prob)
-        multi_cell = rnn.MultiRNNCell([attn_cell() for _ in range(config.num_layers)],
-                                      state_is_tuple=True)
+            logging.info(   # TODO: print entire config in logs
+                "Use dropout with {:.1f}% keep prob!".format(config.keep_prob * 100))
+            def op_cell():
+                return rnn.DropoutWrapper(cell(), output_keep_prob=config.keep_prob)
+        multi_cell = rnn.MultiRNNCell([op_cell() for _ in range(config.num_layers)])
 
         # multi_cell = rnn.MultiRNNCell([cell for _ in range(config.num_layers)])
         # # multi_cell = rnn.MultiRNNCell([cell] * config.num_layers)
@@ -241,8 +236,8 @@ class SmallConfig:  # TODO: move them in json files
     num_layers = 2
     num_steps = 20
     hidden_size = 200
-    max_epoch = 4
-    max_max_epoch = 13
+    init_lr_max_epoch = 4
+    max_epoch = 13
     keep_prob = 1.0
     lr_decay = 0.5
     batch_size = 20
@@ -277,40 +272,43 @@ def run_epoch(session, model, eval_op=None, verbose=False):
         iters += model.input.num_steps
 
         if verbose and step % (model.input.epoch_size // 10) == 10:
-            print("{:.1f} perplexity: {:7.2f} speed: {:.0f} wps"
-                  "".format(step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
-                            iters * model.input.batch_size / (time.time() - start_time)))
+            logging.info(
+                "{:.1f} perplexity: {:7.2f} speed: {:.0f} wps"
+                "".format(step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
+                          iters * model.input.batch_size / (time.time() - start_time)))
 
     return np.exp(costs / iters)
 
 
-def get_config():
-    if FLAGS.model == 'small':
+def get_config(argp):
+    if argp.model == 'small':
         return SmallConfig()
-    # elif FLAGS.model == 'medium':
+    # elif argp.model == 'medium':
     #     return MediumConfig()
-    # elif FLAGS.model == 'large':
+    # elif argp.model == 'large':
     #     return LargeConfig()
-    # elif FLAGS.model == 'test':
+    # elif argp.model == 'test':
     #     return TestConfig()
     else:
-        raise ValueError("Invalid model: %s", FLAGS.model)
+        raise ValueError("Invalid model: %s", argp.model)
 
 
-def main(_):
+def main(argp):
 
-    if not FLAGS.data_path:
+    logging_handler(log_path=LOG_PATH)
+
+    if not argp.data_path:
         raise ValueError("Must set --data_path to PTB data directory")
 
-    raw_data = reader.ptb_raw_data(FLAGS.data_path)
+    raw_data = reader.ptb_raw_data(argp.data_path)
     train_data, valid_data, test_data, _ = raw_data
 
-    config = get_config()
-    eval_config = get_config()
+    config = get_config(argp)
+    eval_config = get_config(argp)
     eval_config.batch_size = 1
     eval_config.num_steps = 1
 
-    print("Configuration: {}".format(FLAGS.model))
+    logging.info("Configuration: {}".format(argp.model))
 
     with tf.Graph().as_default():
         initializer = tf.random_uniform_initializer(minval=-config.init_scale,
@@ -334,33 +332,49 @@ def main(_):
             with tf.variable_scope("Model", reuse=True, initializer=initializer):
                 model_test = PTBModel(is_training=False, config=eval_config, input_=test_input)
 
-        sv = tf.train.Supervisor(logdir=FLAGS.save_path)
+        sv = tf.train.Supervisor(logdir=argp.save_path)
         with sv.managed_session() as session:
 
             # epoch = 0   # To avoid warning after loop block
-            for epoch in range(1, config.max_max_epoch + 1):
-                lr_decay = config.lr_decay ** max(epoch - config.max_epoch, 0.0)
+            for epoch in range(1, config.max_epoch + 1):
+                lr_decay = config.lr_decay ** max(epoch - config.init_lr_max_epoch, 0.0)
                 model.assign_lr(session, lr_value=config.learning_rate * lr_decay)
 
-                print("Epoch: {} Learning rate: {:.4f}".format(epoch, session.run(model.lr)))
+                logging.info(
+                    "Epoch: {} Learning rate: {:.4f}".format(epoch, session.run(model.lr)))
                 train_perplexity = run_epoch(session, model, eval_op=model.train_op,
                                              verbose=True)
 
-                print("Epoch: {} Train Perplexity: {:.2f}".format(epoch, train_perplexity))
+                logging.info(
+                    "Epoch: {} Train Perplexity: {:.2f}".format(epoch, train_perplexity))
                 valid_perplexity = run_epoch(session, model_valid)
-                print("Epoch: {} Valid Perplexity: {:.2f}".format(epoch, valid_perplexity))
+                logging.info(
+                    "Epoch: {} Valid Perplexity: {:.2f}".format(epoch, valid_perplexity))
 
             test_perplexity = run_epoch(session, model_test)
-            print("Test Perplexity: {:.2f}".format(test_perplexity))
+            logging.info("Test Perplexity: {:.2f}".format(test_perplexity))
 
-            # if FLAGS.save_path:
-            #     model_fpath = os.path.join(FLAGS.save_path, "model-epoch{}".format(epoch))
-            #     print("Saving model to {}".format(model_fpath))
+            # if argp.save_path:
+            #     model_fpath = os.path.join(argp.save_path, "model-epoch{}".format(epoch))
+            #     logging.info("Saving model to {}".format(model_fpath))
             #     sv.saver.save(session, model_fpath, global_step=sv.global_step)
+
+
+def get_args(args=None):     # Add possibility to manually insert args at runtime (for ipynb)
+
+    parser = argparse.ArgumentParser(description="Select options to run the process.")
+    parser.add_argument('--data-path', default='./simple-examples/data',
+                        help='Choose the data path.')
+    parser.add_argument('--model', choices=['small', 'medium', 'large'], default='small',
+                        help='Choose the size of model to train.')
+    parser.add_argument('--save-path', default='./models',
+                        help='Model output directory.')
+
+    return parser.parse_args(args)
 
 
 if __name__ == '__main__':
     try:
-        tf.app.run()
+        main(get_args())
     except KeyboardInterrupt:
         sys.exit("\nProgram interrupted by user.\n")
