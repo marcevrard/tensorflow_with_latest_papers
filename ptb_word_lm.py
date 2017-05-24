@@ -19,14 +19,12 @@
 '''
 Example / benchmark for building a PTB LSTM model.
 ==================================================
-
 Trains the model described in:
 (Zaremba, et. al.) Recurrent Neural Network Regularization
 http://arxiv.org/abs/1409.2329
 
 There are 3 supported model configurations:
 -------------------------------------------
-
 | config | epochs | train | valid  | test   |
 |:-------|:------:|------:|-------:|-------:|
 | small  | 13     | 37.99 | 121.39 | 115.91 |
@@ -37,7 +35,6 @@ The exact results may vary depending on the random initialization.
 
 The hyperparameters used in the model:
 --------------------------------------
-
 - `init_scale` - the initial scale of the weights
 - `lr` - the initial value of the learning rate
 - `max_grad` - the maximum permissible norm of the gradient
@@ -53,18 +50,13 @@ The hyperparameters used in the model:
 The data required for this example is in the data/ dir of the
 PTB dataset from Tomas Mikolov's webpage:
 -----------------------------------------
-
     $ wget http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz
     $ tar xvf simple-examples.tgz
 
 To run:
 -------
-
     $ ./ptb_word_lm.py --data_path=simple-examples/data/
 '''
-
-# from __future__ import absolute_import, division, print_function
-
 import argparse
 import json
 import logging
@@ -85,12 +77,11 @@ from misc_tools import load_config
 from print_tools import logging_handler
 from tf_ptb_model_util import reader
 
+
 DATA_TYPE = tf.float32
-LOG_PATH = './logs'
-CONFIG_PATH = './configs'
 
 
-class PTBInput:  # TODO: change to ntpl
+class PTBInput:
     '''The input data.'''
 
     def __init__(self, config, data, name=None):
@@ -113,9 +104,9 @@ class PTBModel:
         vocab_size = config.vocab_size
 
         def cell():
-            return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
-                                     reuse=tf.get_variable_scope().reuse)
-        # cell = rnn_cell_modern.HighwayRNNCell(size)
+            # return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
+            #                          reuse=tf.get_variable_scope().reuse)
+            return rnn_cell_modern.HighwayRNNCell(num_units=size)
         # cell = rnn_cell_modern.JZS1Cell(size)
         # cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
         # cell = rnn_cell_mulint_modern.GRUCell_MulInt(size)
@@ -267,13 +258,13 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
 def main(argp):
 
-    config_fpath = os.path.join(CONFIG_PATH, argp.model+'_config.json')
+    config_fpath = os.path.join('./configs', argp.model + '_config.json')
     config = load_config(config_fpath, extra_config=argp.update_config, ntpl=True)
     eval_config = load_config(config_fpath, extra_config=dict(argp.update_config,
                                                               **{"batch_size": 1,
                                                                  "num_steps": 1}), ntpl=True)
 
-    logging_handler(log_fpath=os.path.join(LOG_PATH, config.config_txt))
+    logging_handler(log_fpath=os.path.join('./logs', config.config_txt))
 
     logging.info(config)
     logging.info("Configuration: {}".format(argp.model))
@@ -336,8 +327,8 @@ def get_args(args=None):     # Add possibility to manually insert args at runtim
     parser = argparse.ArgumentParser(description="Select options to run the process.")
     parser.add_argument('--data-path', default='./simple-examples/data',
                         help='Choose the data path.')
-    parser.add_argument('--model', choices=['small', 'medium', 'large'], default='small',
-                        help='Choose the size of model to train.')
+    parser.add_argument('--model', choices=['small', 'medium', 'large', 'test', 'highway'],
+                        default='small', help='Choose the size of model to train.')
     parser.add_argument('--save-path', default='./models',
                         help='Model output directory.')
     parser.add_argument('-u', '--update-config', type=json.loads, default='{}',
