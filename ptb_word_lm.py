@@ -39,15 +39,15 @@ The hyperparameters used in the model:
 --------------------------------------
 
 - `init_scale` - the initial scale of the weights
-- `learning_rate` - the initial value of the learning rate
-- `max_grad_norm` - the maximum permissible norm of the gradient
+- `lr` - the initial value of the learning rate
+- `max_grad` - the maximum permissible norm of the gradient
 - `num_layers` - the number of LSTM layers
 - `num_steps` - the number of unrolled steps of LSTM
 - `hidden_size` - the number of LSTM units
-- `init_lr_max_epoch` - the number of epochs trained with the initial learning rate
+- `lr_max_epoch` - the number of epochs trained with the initial learning rate
 - `max_epoch` - the total number of epochs for training
 - `keep_prob` - the probability of keeping weights in the dropout layer
-- `lr_decay` - the decay of the learning rate for each epoch after 'init_lr_max_epoch'
+- `lr_decay` - the decay of the learning rate for each epoch after 'lr_max_epoch'
 - `batch_size` - the batch size
 
 The data required for this example is in the data/ dir of the
@@ -66,6 +66,7 @@ To run:
 # from __future__ import absolute_import, division, print_function
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -80,11 +81,13 @@ import rnn_cell_modern                      # pylint: disable=unused-import
 import rnn_cell_mulint_layernorm_modern     # pylint: disable=unused-import
 import rnn_cell_mulint_modern               # pylint: disable=unused-import
 
+from misc_tools import load_config
 from print_tools import logging_handler
 from tf_ptb_model_util import reader
 
 DATA_TYPE = tf.float32
 LOG_PATH = './logs'
+CONFIG_PATH = './configs'
 
 
 class PTBInput:  # TODO: change to ntpl
@@ -110,7 +113,7 @@ class PTBModel:
         vocab_size = config.vocab_size
 
         def cell():
-            return rnn.BasicLSTMCell(num_units=size, forget_bias=0.0,
+            return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
                                      reuse=tf.get_variable_scope().reuse)
         # cell = rnn_cell_modern.HighwayRNNCell(size)
         # cell = rnn_cell_modern.JZS1Cell(size)
@@ -132,8 +135,6 @@ class PTBModel:
 
         op_cell = cell
         if is_training and config.keep_prob < 1:
-            logging.info(   # TODO: print entire config in logs
-                "Use dropout with {:.1f}% keep prob!".format(config.keep_prob * 100))
             def op_cell():
                 return rnn.DropoutWrapper(cell(), output_keep_prob=config.keep_prob)
         multi_cell = rnn.MultiRNNCell([op_cell() for _ in range(config.num_layers)])
@@ -189,7 +190,7 @@ class PTBModel:
         self._lr = tf.Variable(initial_value=0.0, trainable=False)  # TODO: try None as init val?
         tvars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars),
-                                          clip_norm=config.max_grad_norm)
+                                          clip_norm=config.max_grad)
         optimizer = tf.train.GradientDescentOptimizer(self._lr)     # TODO: try momentum
         # optimizer = tf.train.AdamOptimizer(self._lr)
 
@@ -228,22 +229,6 @@ class PTBModel:
         return self._train_op
 
 
-class SmallConfig:  # TODO: move them in json files
-    '''Small config.'''
-    init_scale = 0.1
-    learning_rate = 1.0
-    max_grad_norm = 5
-    num_layers = 2
-    num_steps = 20
-    hidden_size = 200
-    init_lr_max_epoch = 4
-    max_epoch = 13
-    keep_prob = 1.0
-    lr_decay = 0.5
-    batch_size = 20
-    vocab_size = 10000
-
-
 def run_epoch(session, model, eval_op=None, verbose=False):
     '''Runs the model on the given data.'''
     start_time = time.time()
@@ -280,35 +265,21 @@ def run_epoch(session, model, eval_op=None, verbose=False):
     return np.exp(costs / iters)
 
 
-def get_config(argp):
-    if argp.model == 'small':
-        return SmallConfig()
-    # elif argp.model == 'medium':
-    #     return MediumConfig()
-    # elif argp.model == 'large':
-    #     return LargeConfig()
-    # elif argp.model == 'test':
-    #     return TestConfig()
-    else:
-        raise ValueError("Invalid model: %s", argp.model)
-
-
 def main(argp):
 
-    logging_handler(log_path=LOG_PATH)
+    config_fpath = os.path.join(CONFIG_PATH, argp.model+'_config.json')
+    config = load_config(config_fpath, extra_config=argp.update_config, ntpl=True)
+    eval_config = load_config(config_fpath, extra_config=dict(argp.update_config,
+                                                              **{"batch_size": 1,
+                                                                 "num_steps": 1}), ntpl=True)
 
-    if not argp.data_path:
-        raise ValueError("Must set --data_path to PTB data directory")
+    logging_handler(log_fpath=os.path.join(LOG_PATH, config.config_txt))
+
+    logging.info(config)
+    logging.info("Configuration: {}".format(argp.model))
 
     raw_data = reader.ptb_raw_data(argp.data_path)
     train_data, valid_data, test_data, _ = raw_data
-
-    config = get_config(argp)
-    eval_config = get_config(argp)
-    eval_config.batch_size = 1
-    eval_config.num_steps = 1
-
-    logging.info("Configuration: {}".format(argp.model))
 
     with tf.Graph().as_default():
         initializer = tf.random_uniform_initializer(minval=-config.init_scale,
@@ -318,14 +289,14 @@ def main(argp):
             train_input = PTBInput(config=config, data=train_data, name="TrainInput")
             with tf.variable_scope("Model", reuse=None, initializer=initializer):
                 model = PTBModel(is_training=True, config=config, input_=train_input)
-            tf.summary.scalar("Training Loss", model.cost)
-            tf.summary.scalar("Learning Rate", model.lr)
+            tf.summary.scalar("Training_Loss", model.cost)
+            tf.summary.scalar("Learning_Rate", model.lr)
 
         with tf.name_scope("Valid"):
             valid_input = PTBInput(config=config, data=valid_data, name="ValidInput")
             with tf.variable_scope("Model", reuse=True, initializer=initializer):
                 model_valid = PTBModel(is_training=False, config=config, input_=valid_input)
-            tf.summary.scalar("Validation Loss", model_valid.cost)
+            tf.summary.scalar("Validation_Loss", model_valid.cost)
 
         with tf.name_scope("Test"):
             test_input = PTBInput(config=eval_config, data=test_data, name="TestInput")
@@ -337,8 +308,8 @@ def main(argp):
 
             # epoch = 0   # To avoid warning after loop block
             for epoch in range(1, config.max_epoch + 1):
-                lr_decay = config.lr_decay ** max(epoch - config.init_lr_max_epoch, 0.0)
-                model.assign_lr(session, lr_value=config.learning_rate * lr_decay)
+                lr_decay = config.lr_decay ** max(epoch - config.lr_max_epoch, 0.0)
+                model.assign_lr(session, lr_value=config.lr * lr_decay)
 
                 logging.info(
                     "Epoch: {} Learning rate: {:.4f}".format(epoch, session.run(model.lr)))
@@ -369,6 +340,8 @@ def get_args(args=None):     # Add possibility to manually insert args at runtim
                         help='Choose the size of model to train.')
     parser.add_argument('--save-path', default='./models',
                         help='Model output directory.')
+    parser.add_argument('-u', '--update-config', type=json.loads, default='{}',
+                        help="Update configuration setting(s).")
 
     return parser.parse_args(args)
 

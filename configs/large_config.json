@@ -1,0 +1,14 @@
+{
+    "init_scale": 0.04,
+    "lr": 1.0,
+    "max_grad": 10,
+    "num_layers": 2,
+    "num_steps": 35,
+    "hidden_size": 1500,
+    "lr_max_epoch": 14,
+    "max_epoch": 55,
+    "keep_prob": 0.35,
+    "lr_decay": 0.87,
+    "batch_size": 20,
+    "vocab_size": 10000
+}
