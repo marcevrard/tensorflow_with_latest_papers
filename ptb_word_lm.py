@@ -104,9 +104,9 @@ class PTBModel:
         vocab_size = config.vocab_size
 
         def cell():
-            # return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
-            #                          reuse=tf.get_variable_scope().reuse)
-            return rnn_cell_modern.HighwayRNNCell(num_units=size)
+            return rnn.BasicLSTMCell(num_units=size, forget_bias=1.0,
+                                     reuse=tf.get_variable_scope().reuse)
+            # return rnn_cell_modern.HighwayRNNCell(num_units=size)
         # cell = rnn_cell_modern.JZS1Cell(size)
         # cell = rnn_cell_mulint_modern.BasicRNNCell_MulInt(size)
         # cell = rnn_cell_mulint_modern.GRUCell_MulInt(size)
@@ -249,9 +249,9 @@ def run_epoch(session, model, eval_op=None, verbose=False):
 
         if verbose and step % (model.input.epoch_size // 10) == 10:
             logging.info(
-                "{:.1f} perplexity: {:7.2f} speed: {:.0f} wps"
+                "{:.1f} | perplexity: {:7.2f} | speed: {:5.2f} kwps"
                 "".format(step * 1.0 / model.input.epoch_size, np.exp(costs / iters),
-                          iters * model.input.batch_size / (time.time() - start_time)))
+                          iters * model.input.batch_size / (time.time() - start_time) / 1000))
 
     return np.exp(costs / iters)
 
@@ -264,7 +264,9 @@ def main(argp):
                                                               **{"batch_size": 1,
                                                                  "num_steps": 1}), ntpl=True)
 
-    logging_handler(log_fpath=os.path.join('./logs', config.config_txt))
+    logfname_chosen_params = ['lr', 'lr_decay', 'max_grad', 'num_layers', 'max_epoch', 'keep_prob',
+                              'info_']
+    logging_handler(log_path='./logs', config=config, chosen_params=logfname_chosen_params)
 
     logging.info(config)
     logging.info("Configuration: {}".format(argp.model))
@@ -275,7 +277,6 @@ def main(argp):
     with tf.Graph().as_default():
         initializer = tf.random_uniform_initializer(minval=-config.init_scale,
                                                     maxval=config.init_scale)
-
         with tf.name_scope("Train"):
             train_input = PTBInput(config=config, data=train_data, name="TrainInput")
             with tf.variable_scope("Model", reuse=None, initializer=initializer):
@@ -295,7 +296,7 @@ def main(argp):
                 model_test = PTBModel(is_training=False, config=eval_config, input_=test_input)
 
         sv = tf.train.Supervisor(logdir=argp.save_path)
-        with sv.managed_session() as session:
+        with sv.managed_session() as session:   # TODO: fix the model auto-restore behavior
 
             # epoch = 0   # To avoid warning after loop block
             for epoch in range(1, config.max_epoch + 1):
