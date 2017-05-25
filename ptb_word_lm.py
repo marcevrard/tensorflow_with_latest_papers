@@ -68,10 +68,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import framework, legacy_seq2seq, rnn
 
-# import rnn_cell_layernorm_modern
-# import rnn_cell_modern
-# import rnn_cell_mulint_layernorm_modern
-# import rnn_cell_mulint_modern
+# from tf_modern import rnn_cell_layernorm_modern
+# from tf_modern import rnn_cell_modern
+# from tf_modern import rnn_cell_mulint_layernorm_modern
+# from tf_modern import rnn_cell_mulint_modern
 
 from misc_tools import load_config
 from print_tools import logging_handler

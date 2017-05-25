@@ -1,16 +1,18 @@
 """Module for constructing RNN Cells with multiplicative_integration"""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-import math, numpy as np
-from six.moves import xrange
+from __future__ import absolute_import, division, print_function
+
+import math
+
+import numpy as np
 import tensorflow as tf
-from multiplicative_integration_modern import multiplicative_integration
 from tensorflow.contrib import rnn
-import highway_network_modern
-from linear_modern import linear
-import normalization_ops_modern as nom
-from normalization_ops_modern import layer_norm
+
+from tf_modern import highway_network_modern
+from tf_modern import normalization_ops_modern as nom
+from tf_modern.linear_modern import linear
+from tf_modern.multiplicative_integration_modern import multiplicative_integration
+from tf_modern.normalization_ops_modern import layer_norm
+# from six.moves import xrange
 
 RNNCell = rnn.RNNCell
 
@@ -157,7 +159,7 @@ class HighwayRNNCell_MulInt_LayerNorm(RNNCell):
   def __call__(self, inputs, state, timestep = 0, scope=None):
 
     current_state = state
-    for highway_layer in xrange(self.num_highway_layers):
+    for highway_layer in range(self.num_highway_layers):
       with tf.variable_scope('highway_factor_'+str(highway_layer)):
         if self.use_inputs_on_each_layer or highway_layer == 0:
           highway_factor = tf.tanh(multiplicative_integration([inputs, current_state], self._num_units))
