@@ -7,10 +7,11 @@ from __future__ import absolute_import, division, print_function
 import tensorflow as tf
 from tensorflow.contrib import rnn
 
-import highway_network_modern
-from linear_modern import linear
-from multiplicative_integration_modern import multiplicative_integration
-from normalization_ops_modern import layer_norm
+from tf_modern import highway_network_modern
+from tf_modern.linear_modern import linear
+from tf_modern.multiplicative_integration_modern import multiplicative_integration
+from tf_modern.normalization_ops_modern import layer_norm
+
 # from six.moves import xrange
 
 # from multiplicative_integration import (multiplicative_integration,

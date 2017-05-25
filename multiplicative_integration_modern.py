@@ -1,16 +1,16 @@
 """Module for constructing RNN Cells. -- Mostly taken from tensorflow"""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
-import math, numpy as np, itertools
+import itertools
+import math
 
-from six.moves import xrange  # pylint: disable=redefined-builtin
+import numpy as np
 import tensorflow as tf
-import linear_modern as linear
 from tensorflow.contrib import rnn
-import highway_network_modern
 
+from tf_modern import highway_network_modern
+from tf_modern import linear_modern as linear
+# from six.moves import xrange  # pylint: disable=redefined-builtin
 
 RNNCell = rnn.RNNCell
 
@@ -54,5 +54,3 @@ def multiplicative_integration(list_of_inputs, output_size, initial_bias_value =
 
       if use_highway_gate: final_output = highway_network.apply_highway_gate(final_output, list_of_inputs[0])
     return final_output
-
-

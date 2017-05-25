@@ -1,15 +1,16 @@
 import math
+
 import numpy as np
 import tensorflow as tf
-import linear_modern as linear
 from tensorflow.python.framework import ops
 
+from tf_modern import linear_modern as linear
 
 
 def highway(input_, output_size, num_layers = 2, bias = -2.0, activation = tf.nn.relu, scope = None,
   use_batch_timesteps = False, use_l2_loss = True, timestep = -1):
   """Highway Network (cf. http://arxiv.org/abs/1505.00387).
-  
+
   t = sigmoid(Wy + b)
   z = t * g(Wy + b) + (1 - t) * y
 
@@ -31,7 +32,7 @@ def highway(input_, output_size, num_layers = 2, bias = -2.0, activation = tf.nn
       original_input = output
 
       transform_gate = tf.sigmoid(
-        linear_function(original_input, output_size, True, bias, scope='transform_lin_%d' % idx, timestep = timestep))    
+        linear_function(original_input, output_size, True, bias, scope='transform_lin_%d' % idx, timestep = timestep))
       proposed_output = activation(
         linear_function(original_input, output_size, True, use_l2_loss = use_l2_loss, scope='proposed_output_lin_%d' % idx, timestep = timestep), 'activation_output_lin_'+str(idx))
 
@@ -49,5 +50,3 @@ def apply_highway_gate(proposed_output, original_input, bias = -2.0):
 
   output = transform_gate * proposed_output + carry_gate * original_input
   return output
-
-
