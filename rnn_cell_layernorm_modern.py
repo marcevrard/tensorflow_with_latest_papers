@@ -97,29 +97,29 @@ class BasicLSTMCell_LayerNorm(RNNCell):
     return 2 * self._num_units
 
   def __call__(self, inputs, state, timestep = 0, scope=None):
-    with tf.device("/gpu:"+str(self._gpu_for_layer)):
-      """Long short-term memory cell (LSTM)."""
-      with tf.variable_scope(scope or type(self).__name__):  # "BasicLSTMCell"
-        # Parameters of gates are concatenated into one multiply for efficiency.
-        h, c = tf.split(axis=1, num_or_size_splits=2, value=state)
+    # with tf.device("/gpu:"+str(self._gpu_for_layer)):
+    """Long short-term memory cell (LSTM)."""
+    with tf.variable_scope(scope or type(self).__name__):  # "BasicLSTMCell"
+      # Parameters of gates are concatenated into one multiply for efficiency.
+      h, c = tf.split(axis=1, num_or_size_splits=2, value=state)
 
-        concat = linear([inputs, h], self._num_units * 4, False, 0.0)
+      concat = linear([inputs, h], self._num_units * 4, False, 0.0)
 
-        concat = layer_norm(concat, num_variables_in_tensor = 4)
+      concat = layer_norm(concat, num_variables_in_tensor = 4)
 
-        # i = input_gate, j = new_input, f = forget_gate, o = output_gate
-        i, j, f, o = tf.split(axis=1, num_or_size_splits=4, value=concat)
+      # i = input_gate, j = new_input, f = forget_gate, o = output_gate
+      i, j, f, o = tf.split(axis=1, num_or_size_splits=4, value=concat)
 
-        if self.use_recurrent_dropout and self.is_training:
-          input_contribution = tf.nn.dropout(tf.tanh(j), self.recurrent_dropout_factor)
-        else:
-          input_contribution = tf.tanh(j)
+      if self.use_recurrent_dropout and self.is_training:
+        input_contribution = tf.nn.dropout(tf.tanh(j), self.recurrent_dropout_factor)
+      else:
+        input_contribution = tf.tanh(j)
 
-        new_c = c * tf.sigmoid(f + self._forget_bias) + tf.sigmoid(i) * input_contribution
-        with tf.variable_scope('new_h_output'):
-          new_h = tf.tanh(layer_norm(new_c)) * tf.sigmoid(o)
+      new_c = c * tf.sigmoid(f + self._forget_bias) + tf.sigmoid(i) * input_contribution
+      with tf.variable_scope('new_h_output'):
+        new_h = tf.tanh(layer_norm(new_c)) * tf.sigmoid(o)
 
-      return new_h, tf.concat(axis=1, values=[new_h, new_c]) #purposely reversed
+    return new_h, tf.concat(axis=1, values=[new_h, new_c]) #purposely reversed
 
 
 class HighwayRNNCell_LayerNorm(RNNCell):

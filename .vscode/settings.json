@@ -1,0 +1,14 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+    // Arguments passed in. Each argument is a separate item in the array.
+    "python.linting.pylintArgs": [
+        "--disable=missing-docstring",
+        "--disable=locally-disabled",
+        "--disable=fixme", // W0511
+        // "--disable=bad-indentation",
+        "--good-names=_,f,l,x,y,t,i,j,k,n,el,c,h,b,hs,o,lr,w,hh,xh",
+        "--extension-pkg-whitelist=PyQt5",
+        "--disable=bad-indentation"
+    ]
+
+}
