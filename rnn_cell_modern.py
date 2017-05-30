@@ -7,7 +7,7 @@ from __future__ import absolute_import, division, print_function
 import tensorflow as tf
 from tensorflow.contrib import rnn
 
-from tf_modern import highway_network_modern
+# from tf_modern import highway_network_modern
 from tf_modern.linear_modern import linear
 from tf_modern.multiplicative_integration_modern import multiplicative_integration
 from tf_modern.normalization_ops_modern import layer_norm
@@ -45,17 +45,20 @@ class HighwayRNNCell(RNNCell):
             with tf.variable_scope('highway_factor_{}'.format(highway_layer)):
                 if self.use_inputs_on_each_layer or highway_layer == 0:
                     highway_factor = tf.tanh(
-                        linear([inputs, current_state], self._num_units, True))
+                        linear([inputs, current_state], output_size=self._num_units,
+                               bias=True))
                 else:
                     highway_factor = tf.tanh(
-                        linear([current_state], self._num_units, True))
+                        linear([current_state], output_size=self._num_units, bias=True))
             with tf.variable_scope('gate_for_highway_factor_{}'.format(highway_layer)):
                 if self.use_inputs_on_each_layer or highway_layer == 0:
                     gate_for_highway_factor = tf.sigmoid(
-                        linear([inputs, current_state], self._num_units, True, -3.0))
+                        linear([inputs, current_state], output_size=self._num_units,
+                               bias=True, bias_start=-3.0))
                 else:
                     gate_for_highway_factor = tf.sigmoid(
-                        linear([current_state], self._num_units, True, -3.0))
+                        linear([current_state], output_size=self._num_units,
+                               bias=True, bias_start=-3.0))
 
                 gate_for_hidden_factor = 1.0 - gate_for_highway_factor
 
