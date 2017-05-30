@@ -13,117 +13,130 @@
 # limitations under the License.
 # ==============================================================================
 
-"""Basic linear combinations that implicitly generate variables."""
+'''Basic linear combinations that implicitly generate variables.'''
 
 from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 
-use_weight_normalization_default = False
-def linear(args, output_size, bias, bias_start=0.0, use_l2_loss = False, use_weight_normalization = use_weight_normalization_default, scope=None, timestep = -1, weight_initializer = None, orthogonal_scale_factor = 1.1):
-  """Linear map: sum_i(args[i] * W[i]), where W[i] is a variable.
+USE_W_NORM = False
 
-  Args:
-    args: a 2D Tensor or a list of 2D, batch x n, Tensors.
-    output_size: int, second dimension of W[i].
-    bias: boolean, whether to add a bias term or not.
-    bias_start: starting value to initialize the bias; 0 by default.
-    scope: VariableScope for the created subgraph; defaults to "Linear".
 
-  Returns:
-    A 2D Tensor with shape [batch x output_size] equal to
-    sum_i(args[i] * W[i]), where W[i]s are newly created matrices.
+def linear(args, output_size, bias, bias_start=0.0, use_l2_loss=False, use_w_norm=USE_W_NORM,
+           scope=None, timestep=-1, weight_initializer=None, orthogonal_scale_factor=1.1):
+    '''Linear map: sum_i(args[i] * W[i]), where W[i] is a variable.
 
-  Raises:
-    ValueError: if some of the arguments has unspecified or wrong shape.
-  """
-  # assert args #was causing error in upgraded tensorflow
-  if not isinstance(args, (list, tuple)):
-    args = [args]
+    Args:
+      args: a 2D Tensor or a list of 2D, batch x n, Tensors.
+      output_size: int, second dimension of W[i].
+      bias: boolean, whether to add a bias term or not.
+      bias_start: starting value to initialize the bias; 0 by default.
+      scope: VariableScope for the created subgraph; defaults to "Linear".
 
-  if len(args) > 1 and use_weight_normalization: raise ValueError('you can not use weight_normalization with multiple inputs because the euclidean norm will be incorrect -- besides, you should be using multiple integration instead!!!')
+    Returns:
+      A 2D Tensor with shape [batch x output_size] equal to
+      sum_i(args[i] * W[i]), where W[i]s are newly created matrices.
 
-  # Calculate the total size of arguments on dimension 1.
-  total_arg_size = 0
-  shapes = [a.get_shape().as_list() for a in args]
-  for shape in shapes:
-    if len(shape) != 2:
-      raise ValueError("Linear is expecting 2D arguments: %s" % str(shapes))
-    if not shape[1]:
-      raise ValueError("Linear expects shape[1] of arguments: %s" % str(shapes))
+    Raises:
+      ValueError: if some of the arguments has unspecified or wrong shape.
+    '''
+    # assert args #was causing error in upgraded tensorflow
+    if not isinstance(args, (list, tuple)):
+        args = [args]
+
+    if len(args) > 1 and use_w_norm:
+        raise ValueError("you cannot use weight_norm with multiple inputs, "
+                         "since euclidean norm will be incorrect -- "
+                         "besides, you should be using multiple integration instead!")
+
+    # Calculate the total size of arguments on dimension 1.
+    total_arg_size = 0
+    shapes = [a.get_shape().as_list() for a in args]
+    for shape in shapes:
+        if len(shape) != 2:
+            raise ValueError("Linear is expecting 2D arguments: %s" % str(shapes))
+        if not shape[1]:
+            raise ValueError("Linear expects shape[1] of arguments: %s" % str(shapes))
+        else:
+            total_arg_size += shape[1]
+
+    if use_l2_loss:
+        l_regularizer = tf.contrib.layers.l2_regularizer(1e-5)
     else:
-      total_arg_size += shape[1]
+        l_regularizer = None
 
-  if use_l2_loss:
-    l_regularizer = tf.contrib.layers.l2_regularizer(1e-5)
-  else:
-    l_regularizer = None
+    # Now the computation.
+    with tf.variable_scope(scope or 'Linear'):
+        matrix = tf.get_variable('Matrix', shape=[total_arg_size, output_size],
+                                 initializer=tf.uniform_unit_scaling_initializer(),
+                                 regularizer=l_regularizer)
+        if use_w_norm:
+            matrix = weight_normalization(matrix, timestep=timestep)
 
-  # Now the computation.
-  with tf.variable_scope(scope or "Linear"):
-    matrix = tf.get_variable("Matrix", [total_arg_size, output_size],
-                      initializer = tf.uniform_unit_scaling_initializer(), regularizer = l_regularizer)
-    if use_weight_normalization: matrix = weight_normalization(matrix, timestep = timestep)
+        if len(args) == 1:
+            res = tf.matmul(args[0], matrix)
+        else:
+            res = tf.matmul(tf.concat(axis=1, values=args), matrix)
 
-    if len(args) == 1:
-      res = tf.matmul(args[0], matrix)
+        if not bias:
+            return res
+        bias_term = tf.get_variable("Bias", shape=[output_size],
+                                    initializer=tf.constant_initializer(bias_start),
+                                    regularizer=l_regularizer)
+
+    return res + bias_term
+
+
+def batch_timesteps_linear(input, output_size, bias, bias_start=0.0, use_l2_loss=False,
+                           use_w_norm=USE_W_NORM, scope=None, tranpose_input=True, timestep=-1):
+    '''Linear map: sum_i(args[i] * W[i]), where W[i] is a variable.
+    Args:
+      args: a 3D Tensor [timesteps, batch_size, input_size]
+      output_size: int, second dimension of W[i].
+      bias: boolean, whether to add a bias term or not.
+      bias_start: starting value to initialize the bias; 0 by default.
+      scope: VariableScope for the created subgraph; defaults to "Linear".
+    Returns:
+      A 2D Tensor with shape [batch x output_size] equal to
+      sum_i(args[i] * W[i]), where W[i]s are newly created matrices.
+    Raises:
+      ValueError: if some of the arguments has unspecified or wrong shape.
+    '''
+    # Calculate the total size of arguments on dimension 2.
+    if tranpose_input:
+        input = tf.transpose(input, [1, 0, 2])
+
+    shape_list = input.get_shape().as_list()
+    if len(shape_list) != 3:
+        raise ValueError("Shape size must be 3, current input shape size is: ", len(shape_list))
+
+    num_timesteps = shape_list[0]
+    batch_size = shape_list[1]
+    total_arg_size = shape_list[2]
+
+    if use_l2_loss:
+        l_regularizer = tf.contrib.layers.l2_regularizer(1e-5)
     else:
-      res = tf.matmul(tf.concat(axis=1, values=args), matrix)
+        l_regularizer = None
 
-    if not bias:
-      return res
-    bias_term = tf.get_variable("Bias", [output_size],
-                                initializer=tf.constant_initializer(bias_start), regularizer = l_regularizer)
+    # Now the computation.
+    with tf.variable_scope(scope or 'Linear'):
+        matrix = tf.get_variable('Matrix', shape=[total_arg_size, output_size],
+                                 initializer=tf.uniform_unit_scaling_initializer(),
+                                 regularizer=l_regularizer)
+        if use_w_norm:
+            matrix = weight_normalization(matrix)
+        matrix = tf.tile(tf.expand_dims(matrix, axis=0),
+                         multiples=[num_timesteps, 1, 1])
 
-  return res + bias_term
+        res = tf.matmul(input, matrix)
 
+        if bias:
+            bias_term = tf.get_variable('Bias', shape=[output_size],
+                                        initializer=tf.constant_initializer(bias_start))
+            res = res + bias_term
 
-def batch_timesteps_linear(input, output_size, bias, bias_start=0.0, use_l2_loss = False, use_weight_normalization = use_weight_normalization_default, scope=None,
-  tranpose_input = True, timestep = -1):
-  """Linear map: sum_i(args[i] * W[i]), where W[i] is a variable.
-  Args:
-    args: a 3D Tensor [timesteps, batch_size, input_size]
-    output_size: int, second dimension of W[i].
-    bias: boolean, whether to add a bias term or not.
-    bias_start: starting value to initialize the bias; 0 by default.
-    scope: VariableScope for the created subgraph; defaults to "Linear".
-  Returns:
-    A 2D Tensor with shape [batch x output_size] equal to
-    sum_i(args[i] * W[i]), where W[i]s are newly created matrices.
-  Raises:
-    ValueError: if some of the arguments has unspecified or wrong shape.
-  """
-  # Calculate the total size of arguments on dimension 2.
-  if tranpose_input:
-    input = tf.transpose(input, [1,0,2])
+    if tranpose_input:
+        res = tf.transpose(res, perm=[1, 0, 2])
 
-  shape_list = input.get_shape().as_list()
-  if len(shape_list) != 3: raise ValueError('shape must be of size 3, you have inputted shape size of:', len(shape_list))
-
-  num_timesteps = shape_list[0]
-  batch_size = shape_list[1]
-  total_arg_size = shape_list[2]
-
-  if use_l2_loss:
-    l_regularizer = tf.contrib.layers.l2_regularizer(1e-5)
-  else:
-    l_regularizer = None
-
-  # Now the computation.
-  with tf.variable_scope(scope or "Linear"):
-    matrix = tf.get_variable("Matrix", [total_arg_size, output_size], initializer = tf.uniform_unit_scaling_initializer(), regularizer = l_regularizer)
-    if use_weight_normalization: matrix = weight_normalization(matrix)
-    matrix = tf.tile(tf.expand_dims(matrix, 0), [num_timesteps, 1, 1])
-
-    res = tf.matmul(input, matrix)
-
-    if bias:
-      bias_term = tf.get_variable(
-          "Bias", [output_size],
-          initializer=tf.constant_initializer(bias_start))
-      res = res + bias_term
-
-  if tranpose_input:
-    res = tf.transpose(res, [1,0,2])
-
-  return res
+    return res

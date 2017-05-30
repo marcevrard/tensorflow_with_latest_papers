@@ -12,8 +12,6 @@ from tf_modern.linear_modern import linear
 from tf_modern.multiplicative_integration_modern import multiplicative_integration
 from tf_modern.normalization_ops_modern import layer_norm
 
-# from six.moves import xrange
-
 # from multiplicative_integration import (multiplicative_integration,
 #                                         multiplicative_integration_for_multiple_inputs)
 
@@ -44,14 +42,14 @@ class HighwayRNNCell(RNNCell):
     def __call__(self, inputs, state, timestep=0, scope=None):
         current_state = state
         for highway_layer in range(self.num_highway_layers):
-            with tf.variable_scope('highway_factor_' + str(highway_layer)):
+            with tf.variable_scope('highway_factor_{}'.format(highway_layer)):
                 if self.use_inputs_on_each_layer or highway_layer == 0:
                     highway_factor = tf.tanh(
                         linear([inputs, current_state], self._num_units, True))
                 else:
                     highway_factor = tf.tanh(
                         linear([current_state], self._num_units, True))
-            with tf.variable_scope('gate_for_highway_factor_' + str(highway_layer)):
+            with tf.variable_scope('gate_for_highway_factor_{}'.format(highway_layer)):
                 if self.use_inputs_on_each_layer or highway_layer == 0:
                     gate_for_highway_factor = tf.sigmoid(
                         linear([inputs, current_state], self._num_units, True, -3.0))
@@ -95,7 +93,7 @@ class BasicGatedCell(RNNCell):
     def __call__(self, inputs, state, timestep=0, scope=None):
         with tf.variable_scope(scope or type(self).__name__):
             # Forget Gate bias starts as 1.0 -- TODO: double check if this is correct
-            with tf.variable_scope("Gates"):
+            with tf.variable_scope('Gates'):
                 if self.use_multiplicative_integration:
                     gated_factor = multiplicative_integration(
                         [inputs, state], self._num_units, self.forget_bias_initialization)
@@ -105,7 +103,7 @@ class BasicGatedCell(RNNCell):
 
                 gated_factor = tf.sigmoid(gated_factor)
 
-            with tf.variable_scope("Candidate"):
+            with tf.variable_scope('Candidate'):
                 c = tf.tanh(linear([inputs], self._num_units, True, 0.0))
 
                 if self.use_recurrent_dropout and self.is_training:
@@ -146,7 +144,7 @@ class MGUCell(RNNCell):
     def __call__(self, inputs, state, timestep=0, scope=None):
         with tf.variable_scope(scope or type(self).__name__):
             # Forget Gate bias starts as 1.0 -- TODO: double check if this is correct
-            with tf.variable_scope("Gates"):
+            with tf.variable_scope('Gates'):
                 if self.use_multiplicative_integration:
                     gated_factor = multiplicative_integration(
                         [inputs, state], self._num_units, self.forget_bias_initialization)
@@ -156,7 +154,7 @@ class MGUCell(RNNCell):
 
                 gated_factor = tf.sigmoid(gated_factor)
 
-            with tf.variable_scope("Candidate"):
+            with tf.variable_scope('Candidate'):
                 if self.use_multiplicative_integration:
                     c = tf.tanh(multiplicative_integration(
                         [inputs, state * gated_factor], self._num_units, 0.0))
@@ -206,7 +204,7 @@ class LSTMCellMemoryArray(RNNCell):
         return self._num_units * (self.num_memory_arrays + 1)
 
     def __call__(self, inputs, state, timestep=0, scope=None):
-        with tf.variable_scope(scope or type(self).__name__):  # "BasicLSTMCell"
+        with tf.variable_scope(scope or type(self).__name__):  # 'BasicLSTMCell'
             # Parameters of gates are concatenated into one multiply for efficiency.
             hidden_state_plus_c_list = tf.split(
                 state, num_or_size_splits=self.num_memory_arrays+1, axis=1)
@@ -268,7 +266,7 @@ class JZS1Cell(RNNCell):
     http://www.jmlr.org/proceedings/papers/v37/jozefowicz15.pdf'''
 
     def __init__(self, num_units, gpu_for_layer=0,
-                 weight_initializer="uniform_unit", orthogonal_scale_factor=1.1):
+                 weight_initializer='uniform_unit', orthogonal_scale_factor=1.1):
         self._num_units = num_units
         self._gpu_for_layer = gpu_for_layer
         self._weight_initializer = weight_initializer
@@ -287,11 +285,11 @@ class JZS1Cell(RNNCell):
         return self._num_units
 
     def __call__(self, inputs, state, scope=None):
-        with tf.device("/gpu:" + str(self._gpu_for_layer)):
+        with tf.device('/gpu:{}'.format(self._gpu_for_layer)):
             ## JZS1, mutant 1 with n units cells.
-            with tf.variable_scope(scope or type(self).__name__):  # "JZS1Cell"
+            with tf.variable_scope(scope or type(self).__name__):  # 'JZS1Cell'
                 # Reset gate and update gate.
-                with tf.variable_scope("Zinput"):
+                with tf.variable_scope('ZInput'):
                     # We start with bias of 1.0 to not reset and not update.
                     ## equation 1 z = sigm(WxzXt+Bz), x_t is inputs
                     z = tf.sigmoid(linear([inputs],
@@ -299,14 +297,14 @@ class JZS1Cell(RNNCell):
                                           weight_initializer=self._weight_initializer,
                                           orthogonal_scale_factor=self._orthogonal_scale_factor))
 
-                with tf.variable_scope("Rinput"):
+                with tf.variable_scope('RInput'):
                     ## equation 2 r = sigm(WxrXt+Whrht+Br), h_t is the previous state
                     r = tf.sigmoid(linear([inputs, state],
                                           self._num_units, True, 1.0,
                                           weight_initializer=self._weight_initializer,
                                           orthogonal_scale_factor=self._orthogonal_scale_factor))
                 ## equation 3
-                with tf.variable_scope("Candidate"):
+                with tf.variable_scope('Candidate'):
                     component_0 = linear([r * state],
                                          self._num_units, True)
                     component_1 = tf.tanh(tf.tanh(inputs) + component_0)
@@ -324,7 +322,7 @@ class JZS2Cell(RNNCell):
     http://www.jmlr.org/proceedings/papers/v37/jozefowicz15.pdf'''
 
     def __init__(self, num_units, gpu_for_layer=0,
-                 weight_initializer="uniform_unit", orthogonal_scale_factor=1.1):
+                 weight_initializer='uniform_unit', orthogonal_scale_factor=1.1):
         self._num_units = num_units
         self._gpu_for_layer = gpu_for_layer
         self._weight_initializer = weight_initializer
@@ -343,10 +341,10 @@ class JZS2Cell(RNNCell):
         return self._num_units
 
     def __call__(self, inputs, state, scope=None):
-        with tf.device("/gpu:" + str(self._gpu_for_layer)):
+        with tf.device('/gpu:{}'.format(self._gpu_for_layer)):
             ## JZS2, mutant 2 with n units cells.
-            with tf.variable_scope(scope or type(self).__name__):  # "JZS1Cell"
-                with tf.variable_scope("Zinput"):  # Reset gate and update gate.
+            with tf.variable_scope(scope or type(self).__name__):  # 'JZS1Cell'
+                with tf.variable_scope('ZInput'):  # Reset gate and update gate.
                     ## equation 1
                     z = tf.sigmoid(
                         linear([inputs, state],
@@ -355,14 +353,14 @@ class JZS2Cell(RNNCell):
                                orthogonal_scale_factor=self._orthogonal_scale_factor))
 
                 ## equation 2
-                with tf.variable_scope("Rinput"):
+                with tf.variable_scope('RInput'):
                     r = tf.sigmoid(
                         inputs + (linear([state],
                                          self._num_units, True, 1.0,
                                          weight_initializer=self._weight_initializer,
                                          orthogonal_scale_factor=self._orthogonal_scale_factor)))
                 ## equation 3
-                with tf.variable_scope("Candidate"):
+                with tf.variable_scope('Candidate'):
                     component_0 = linear([state * r, inputs],
                                          self._num_units, True)
                     component_2 = (tf.tanh(component_0)) * z
@@ -379,7 +377,7 @@ class JZS3Cell(RNNCell):
     http://www.jmlr.org/proceedings/papers/v37/jozefowicz15.pdf'''
 
     def __init__(self, num_units, gpu_for_layer=0,
-                 weight_initializer="uniform_unit", orthogonal_scale_factor=1.1):
+                 weight_initializer='uniform_unit', orthogonal_scale_factor=1.1):
         self._num_units = num_units
         self._gpu_for_layer = gpu_for_layer
         self._weight_initializer = weight_initializer
@@ -398,11 +396,11 @@ class JZS3Cell(RNNCell):
         return self._num_units
 
     def __call__(self, inputs, state, scope=None):
-        with tf.device("/gpu:" + str(self._gpu_for_layer)):
+        with tf.device('/gpu:{}'.format(self._gpu_for_layer)):
             ## JZS3, mutant 2 with n units cells.
-            with tf.variable_scope(scope or type(self).__name__):  # "JZS1Cell"
+            with tf.variable_scope(scope or type(self).__name__):  # 'JZS1Cell'
                 # Reset gate and update gate.
-                with tf.variable_scope("Zinput"):
+                with tf.variable_scope('ZInput'):
                     # We start with bias of 1.0 to not reset and not update.
                     ## equation 1
 
@@ -411,13 +409,13 @@ class JZS3Cell(RNNCell):
                                           weight_initializer=self._weight_initializer,
                                           orthogonal_scale_factor=self._orthogonal_scale_factor))
                 ## equation 2
-                with tf.variable_scope("Rinput"):
+                with tf.variable_scope('RInput'):
                     r = tf.sigmoid(linear([inputs, state],
                                           self._num_units, True, 1.0,
                                           weight_initializer=self._weight_initializer,
                                           orthogonal_scale_factor=self._orthogonal_scale_factor))
                 ## equation 3
-                with tf.variable_scope("Candidate"):
+                with tf.variable_scope('Candidate'):
                     component_0 = linear([state * r, inputs],
                                          self._num_units, True)
                     component_2 = (tf.tanh(component_0)) * z
@@ -456,7 +454,7 @@ class DeltaRNN(RNNCell):
         '''
         assert (inner_function_output.get_shape().as_list() ==
                 past_hidden_state.get_shape().as_list())
-        r = tf.get_variable("outer_function_gate", [self._num_units], dtype=tf.float32,
+        r = tf.get_variable('outer_function_gate', [self._num_units], dtype=tf.float32,
                             initializer=tf.zeros_initializer())
 
         # Equation 5 in Delta Rnn Paper
@@ -480,16 +478,16 @@ class DeltaRNN(RNNCell):
         self._W_x_inputs = linear(inputs, self._num_units, True)
 
         alpha = tf.get_variable(
-            "alpha", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
+            'alpha', [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
 
         beta_one = tf.get_variable(
-            "beta_one", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
+            'beta_one', [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
 
         beta_two = tf.get_variable(
-            "beta_two", [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
+            'beta_two', [self._num_units], dtype=tf.float32, initializer=tf.ones_initializer())
 
         z_t_bias = tf.get_variable(
-            "z_t_bias", [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer())
+            'z_t_bias', [self._num_units], dtype=tf.float32, initializer=tf.zeros_initializer())
 
         # Second Order Cell Calculations
         d_1_t = alpha * V_x_d * self._W_x_inputs
